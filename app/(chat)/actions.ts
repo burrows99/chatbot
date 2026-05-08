@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { auth } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import { titleModel } from "@/lib/ai/models";
+import { ollamaManager } from "@/lib/ai/ollama";
 import { titlePrompt } from "@/lib/ai/prompts";
 import { getTitleModel } from "@/lib/ai/providers";
 import {
@@ -25,13 +26,18 @@ export async function generateTitleFromUserMessage({
 }: {
   message: UIMessage;
 }) {
+  const useOllamaForTitle = ollamaManager.isCloudConfigured();
   const { text } = await generateText({
     model: getTitleModel(),
     system: titlePrompt,
     prompt: getTextFromMessage(message),
-    providerOptions: {
-      gateway: { order: titleModel.gatewayOrder },
-    },
+    ...(useOllamaForTitle
+      ? {}
+      : {
+          providerOptions: {
+            gateway: { order: titleModel.gatewayOrder },
+          },
+        }),
   });
   return text
     .replace(/^[#*"\s]+/, "")

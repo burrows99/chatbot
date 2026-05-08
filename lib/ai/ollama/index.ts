@@ -5,6 +5,7 @@ import {
   DEFAULT_CLOUD_BASE_URL,
   DEFAULT_LOCAL_BASE_URL,
   DEFAULT_TAG_REVALIDATE_SECONDS,
+  DEFAULT_TITLE_MODEL_NAME,
   isOllamaModelId,
   isOllamaProviderId,
   LOCAL_API_KEY_PLACEHOLDER,
@@ -111,6 +112,18 @@ export class OllamaManager {
     return this._cloudProvider !== null;
   }
 
+  /**
+   * Returns a small fast cloud Ollama model suitable for title generation,
+   * or null if cloud isn't configured. Used so the app can stop depending
+   * on the Vercel AI Gateway for title generation.
+   */
+  getTitleLanguageModel(): LanguageModel | null {
+    if (!this._cloudProvider) {
+      return null;
+    }
+    return this._cloudProvider(DEFAULT_TITLE_MODEL_NAME);
+  }
+
   getLanguageModel(modelId: string): LanguageModel {
     if (modelId.startsWith(`${OLLAMA_LOCAL_PROVIDER}:`)) {
       return this._localProvider(
@@ -151,8 +164,14 @@ export class OllamaManager {
     return [...local, ...cloud];
   }
 
-  capabilitiesFor(_modelId: string): ModelCapabilities {
-    return { tools: true, vision: false, reasoning: false };
+  /**
+   * Default capability hints. Cloud models reliably implement OpenAI-format
+   * tool calling; small local models often don't and break the stream when
+   * tool definitions are attached. Per-model overrides can refine this.
+   */
+  capabilitiesFor(modelId: string): ModelCapabilities {
+    const isCloud = modelId.startsWith(`${OLLAMA_CLOUD_PROVIDER}:`);
+    return { tools: isCloud, vision: false, reasoning: false };
   }
 
   capabilitiesForAll(modelIds: string[]): Record<string, ModelCapabilities> {

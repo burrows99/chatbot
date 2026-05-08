@@ -31,5 +31,9 @@ export function getTitleModel() {
   if (isTestEnvironment && myProvider) {
     return myProvider.languageModel("title-model");
   }
+  const ollamaTitleModel = ollamaManager.getTitleLanguageModel();
+  if (ollamaTitleModel) {
+    return ollamaTitleModel;
+  }
   return gateway.languageModel(titleModel.id);
 }
