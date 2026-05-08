@@ -123,7 +123,10 @@ export async function POST(request: Request) {
         title: "New chat",
         visibility: selectedVisibilityType,
       });
-      titlePromise = generateTitleFromUserMessage({ message });
+      titlePromise = generateTitleFromUserMessage({
+        message,
+        modelId: chatModel,
+      });
     }
 
     let uiMessages: ChatMessage[];
@@ -219,7 +222,16 @@ export async function POST(request: Request) {
           model: getLanguageModel(chatModel),
           system: `${systemPrompt({ requestHints, supportsTools })}
 
-${catalog.prompt({ mode: "inline" })}`,
+${catalog.prompt({
+  mode: "inline",
+  customRules: [
+    "If the user requests data from an external source (e.g. GitHub issues, tasks, pull requests), call the relevant tool first, then generate the UI spec using the real fetched data.",
+    "For KanbanBoard: it MUST always be the /root element. Never nest it inside Card or any other component. Set /root directly to the KanbanBoard element key.",
+    "Pass all fetched items directly as the KanbanBoard 'items' prop. Map each item's status to a column id: open->todo, in_progress->in_progress, closed->done.",
+    "CRITICAL: Every JSON patch must be on a single compact line with no newlines inside the value. Never format or pretty-print a patch across multiple lines.",
+    "Always include a 'title' prop on KanbanBoard summarizing what is shown.",
+  ],
+})}`,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
@@ -227,10 +239,10 @@ ${catalog.prompt({ mode: "inline" })}`,
               ? []
               : ([
                   "getWeather",
-                  "createDocument",
-                  "editDocument",
-                  "updateDocument",
-                  "requestSuggestions",
+                  // "createDocument",
+                  // "editDocument",
+                  // "updateDocument",
+                  // "requestSuggestions",
                   ...mcpToolNames,
                 ] as never),
           providerOptions: {

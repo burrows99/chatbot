@@ -4,10 +4,11 @@ import { generateText, type UIMessage } from "ai";
 import { cookies } from "next/headers";
 import { auth } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
-import { titleModel } from "@/lib/ai/models";
+import { chatModels } from "@/lib/ai/models";
 import { ollamaManager } from "@/lib/ai/ollama";
 import { titlePrompt } from "@/lib/ai/prompts";
-import { getTitleModel } from "@/lib/ai/providers";
+import { getLanguageModel, myProvider } from "@/lib/ai/providers";
+import { isTestEnvironment } from "@/lib/constants";
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getChatById,
@@ -23,21 +24,30 @@ export async function saveChatModelAsCookie(model: string) {
 
 export async function generateTitleFromUserMessage({
   message,
+  modelId,
 }: {
   message: UIMessage;
+  modelId: string;
 }) {
-  const useOllamaForTitle = ollamaManager.isCloudConfigured();
+  const isOllama = ollamaManager.isOllamaModelId(modelId);
+  const modelConfig = chatModels.find((m) => m.id === modelId);
+
+  const model =
+    isTestEnvironment && myProvider
+      ? myProvider.languageModel("title-model")
+      : getLanguageModel(modelId);
+
   const { text } = await generateText({
-    model: getTitleModel(),
+    model,
     system: titlePrompt,
     prompt: getTextFromMessage(message),
-    ...(useOllamaForTitle
-      ? {}
-      : {
+    ...(!isOllama && modelConfig?.gatewayOrder
+      ? {
           providerOptions: {
-            gateway: { order: titleModel.gatewayOrder },
+            gateway: { order: modelConfig.gatewayOrder },
           },
-        }),
+        }
+      : {}),
   });
   return text
     .replace(/^[#*"\s]+/, "")

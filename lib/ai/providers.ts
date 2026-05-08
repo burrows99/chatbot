@@ -1,6 +1,5 @@
 import { customProvider, gateway } from "ai";
 import { isTestEnvironment } from "../constants";
-import { titleModel } from "./models";
 import { ollamaManager } from "./ollama";
 
 export const myProvider = isTestEnvironment
@@ -25,15 +24,4 @@ export function getLanguageModel(modelId: string) {
   }
 
   return gateway.languageModel(modelId);
-}
-
-export function getTitleModel() {
-  if (isTestEnvironment && myProvider) {
-    return myProvider.languageModel("title-model");
-  }
-  const ollamaTitleModel = ollamaManager.getTitleLanguageModel();
-  if (ollamaTitleModel) {
-    return ollamaTitleModel;
-  }
-  return gateway.languageModel(titleModel.id);
 }
