@@ -16,7 +16,7 @@ services:
     #    tmpfs:
     #      size: 134217728 # 128*2^20 bytes = 128Mb
     env_file:
-      - .env
+      - .env.local
     ports:
       - "5432:5432"
 
@@ -39,7 +39,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     env_file:
-      - .env
+      - .env.local
     command: server /data --console-address ":9001"
     volumes:
       - ./.volumes/minio:/data
