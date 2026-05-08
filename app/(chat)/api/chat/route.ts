@@ -12,6 +12,8 @@ import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
+import { loadMcpTools } from "@/lib/ai/mcp/client";
+import { getMcpConfigFromRequest } from "@/lib/ai/mcp/request";
 import {
   allowedModelIds,
   chatModels,
@@ -192,6 +194,13 @@ export async function POST(request: Request) {
 
     const modelMessages = await convertToModelMessages(uiMessages);
 
+    const mcpConfig = getMcpConfigFromRequest(request);
+    const mcp =
+      supportsTools && Object.keys(mcpConfig.mcpServers).length > 0
+        ? await loadMcpTools(mcpConfig)
+        : { tools: {}, close: async () => undefined };
+    const mcpToolNames = Object.keys(mcp.tools);
+
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
@@ -203,13 +212,14 @@ export async function POST(request: Request) {
           experimental_activeTools:
             isReasoningModel && !supportsTools
               ? []
-              : [
+              : ([
                   "getWeather",
                   "createDocument",
                   "editDocument",
                   "updateDocument",
                   "requestSuggestions",
-                ],
+                  ...mcpToolNames,
+                ] as never),
           providerOptions: {
             ...(modelConfig?.gatewayOrder && {
               gateway: { order: modelConfig.gatewayOrder },
@@ -236,10 +246,14 @@ export async function POST(request: Request) {
               dataStream,
               modelId: chatModel,
             }),
+            ...mcp.tools,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: "stream-text",
+          },
+          onFinish: async () => {
+            await mcp.close();
           },
         });
 

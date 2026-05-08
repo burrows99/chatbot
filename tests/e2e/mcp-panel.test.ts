@@ -59,6 +59,16 @@ test.describe("MCP Panel", () => {
       // biome-ignore lint/suspicious/noDocumentCookie: test cleanup needs raw cookie write
       document.cookie = "mcp-config=; path=/; max-age=0";
     });
+
+    // Stub the probe endpoint so tests don't depend on real network calls.
+    await page.route("**/api/mcp/probe", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, tools: [] }),
+      })
+    );
+
     await page.goto("/");
   });
 
@@ -128,8 +138,10 @@ test.describe("MCP Panel", () => {
     await openPanel(page);
 
     const card = page.getByTestId("mcp-server-card-github");
+    // Wait for the probe to settle before asserting or clicking.
     await expect(card.getByTestId("mcp-server-status")).toHaveText(
-      /connected/i
+      /connected/i,
+      { timeout: 5000 }
     );
 
     // Popover open animation can mark elements briefly "not stable"; force
@@ -163,6 +175,11 @@ test.describe("MCP Panel", () => {
   test("reconnect button is visible while connected", async ({ page }) => {
     await openPanel(page);
     const card = page.getByTestId("mcp-server-card-github");
+    // Wait for the background probe to settle to connected first.
+    await expect(card.getByTestId("mcp-server-status")).toHaveText(
+      /connected/i,
+      { timeout: 5000 }
+    );
     await expect(card.getByTestId("mcp-server-reconnect")).toBeVisible();
   });
 
@@ -216,13 +233,13 @@ test.describe("MCP Panel", () => {
     // Reopen — Servers tab shows the new server, GitHub is gone.
     await openPanel(page);
     await expect(page.getByTestId("mcp-server-card-acme")).toBeVisible();
-    await expect(
-      page.getByTestId("mcp-server-card-github")
-    ).not.toBeVisible();
+    await expect(page.getByTestId("mcp-server-card-github")).not.toBeVisible();
 
     const stored = await page.evaluate(() =>
       window.localStorage.getItem("mcp-config")
     );
-    expect(JSON.parse(stored as string)).toEqual(JSON.parse(VALID_CUSTOM_CONFIG));
+    expect(JSON.parse(stored as string)).toEqual(
+      JSON.parse(VALID_CUSTOM_CONFIG)
+    );
   });
 });

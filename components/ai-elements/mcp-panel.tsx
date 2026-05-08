@@ -53,10 +53,30 @@ function PureMCPPanelCompact() {
 
   useEffect(() => {
     setMounted(true);
+    // Write the cookie and probe all servers in the background on mount so:
+    // 1. The server has config before the first chat message is sent.
+    // 2. The status indicator is accurate without needing to open the panel.
+    const config = Object.keys(stored.mcpServers).length === 0 ? DEFAULT_MCP_CONFIG : stored;
+    setMcpCookie(JSON.stringify(config));
+    for (const [name, server] of Object.entries(config.mcpServers)) {
+      probeServer(name, server);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-seed draft and reset tab when the panel opens, so reopening shows
-  // the saved value and starts on the Servers overview.
+  // Keep the cookie in sync whenever effective config changes, and re-probe
+  // any servers that are new or just reconnected.
+  useEffect(() => {
+    if (mounted) {
+      setMcpCookie(JSON.stringify(effective));
+      for (const [name, server] of Object.entries(effective.mcpServers)) {
+        probeServer(name, server);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effective]);
+
+  // Re-seed draft and reset tab when the panel opens.
   useEffect(() => {
     if (open) {
       setDraft(storedText);
@@ -100,12 +120,34 @@ function PureMCPPanelCompact() {
     setConnection((prev) => ({ ...prev, [name]: status }));
   }, []);
 
-  // Without a backend probe yet, connect/reconnect transition straight to
-  // "connected". When the chat route is wired up, swap in an async probe and
-  // surface the intermediate "connecting" state.
-  const handleConnect = useCallback(
-    (name: string) => setStatus(name, "connected"),
+  const probeServer = useCallback(
+    async (name: string, server: import("@/lib/ai/mcp/config").McpServerConfig) => {
+      setStatus(name, "connecting");
+      try {
+        const res = await fetch("/api/mcp/probe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: server.url,
+            type: server.type,
+            headers: server.headers,
+          }),
+        });
+        const json = await res.json();
+        setStatus(name, json.ok ? "connected" : "error");
+      } catch {
+        setStatus(name, "error");
+      }
+    },
     [setStatus]
+  );
+
+  const handleConnect = useCallback(
+    (name: string) => {
+      const server = effective.mcpServers[name];
+      if (server) probeServer(name, server);
+    },
+    [effective, probeServer]
   );
 
   const handleDisconnect = useCallback(
@@ -114,8 +156,11 @@ function PureMCPPanelCompact() {
   );
 
   const handleReconnect = useCallback(
-    (name: string) => setStatus(name, "connected"),
-    [setStatus]
+    (name: string) => {
+      const server = effective.mcpServers[name];
+      if (server) probeServer(name, server);
+    },
+    [effective, probeServer]
   );
 
   return (
