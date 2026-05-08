@@ -3,8 +3,6 @@ import { z } from "zod";
 export const MCP_CONFIG_STORAGE_KEY = "mcp-config";
 export const MCP_CONFIG_COOKIE = "mcp-config";
 
-export const EMPTY_MCP_CONFIG: McpConfig = { mcpServers: {} };
-
 const headersSchema = z.record(z.string(), z.string()).optional();
 
 const httpServerSchema = z.object({
@@ -27,6 +25,24 @@ export const mcpConfigSchema = z.object({
 
 export type McpServerConfig = z.infer<typeof serverSchema>;
 export type McpConfig = z.infer<typeof mcpConfigSchema>;
+export type Transport = "http" | "sse";
+
+export const EMPTY_MCP_CONFIG: McpConfig = { mcpServers: {} };
+
+export const GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/";
+
+export const DEFAULT_MCP_CONFIG: McpConfig = {
+  mcpServers: {
+    github: {
+      type: "http",
+      url: GITHUB_MCP_URL,
+    },
+  },
+};
+
+export function transportOf(server: McpServerConfig): Transport {
+  return server.type === "sse" ? "sse" : "http";
+}
 
 export type ParseResult =
   | { ok: true; config: McpConfig }

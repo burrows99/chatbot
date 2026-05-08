@@ -1,10 +1,10 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
-const VALID_CONFIG = JSON.stringify(
+const VALID_CUSTOM_CONFIG = JSON.stringify(
   {
     mcpServers: {
-      example: {
-        url: "https://mcp.example.com/mcp",
+      acme: {
+        url: "https://mcp.acme.example.com/mcp",
         headers: { Authorization: "Bearer token" },
       },
     },
@@ -13,10 +13,9 @@ const VALID_CONFIG = JSON.stringify(
   2
 );
 
+const GITHUB_URL = "https://api.githubcopilot.com/mcp/";
+
 async function readEditorValue(editor: Locator): Promise<string> {
-  // The editor exposes its current value via a data attribute that mirrors
-  // the React draft state. This avoids parsing CodeMirror's rendered DOM,
-  // which inserts zero-width chars and can mangle whitespace.
   const value = await editor.getAttribute("data-mcp-value");
   return value ?? "";
 }
@@ -27,22 +26,31 @@ async function setEditorValue(
   value: string
 ): Promise<void> {
   const content = editor.locator(".cm-content");
-  // The popover open animation can still be running here; force the click
-  // through rather than wait out the radix transform animation.
   await content.click({ force: true });
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+A" : "Control+A"
   );
   await page.keyboard.press("Delete");
-  // insertText pastes raw text and preserves newlines/whitespace exactly,
-  // unlike .type() which fires per-key events that CM may auto-handle.
   await page.keyboard.insertText(value);
+}
+
+async function openPanel(page: Page) {
+  await page.getByTestId("mcp-panel-trigger").click();
+}
+
+async function switchToJsonTab(page: Page) {
+  // Popover open animation can leave the trigger briefly "not stable"; the
+  // tab button is plainly visible by the time we get here.
+  await page.getByTestId("mcp-tab-json").click({ force: true });
 }
 
 test.describe("MCP Panel", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(() => {
+    // Clear before navigation so the React mount doesn't pick up state from
+    // a prior test. addInitScript runs on every navigation; tests that need
+    // post-reload persistence should set state inside the test rather than
+    // relying on this cleanup.
+    await page.addInitScript(() => {
       try {
         window.localStorage.removeItem("mcp-config");
       } catch {
@@ -51,6 +59,7 @@ test.describe("MCP Panel", () => {
       // biome-ignore lint/suspicious/noDocumentCookie: test cleanup needs raw cookie write
       document.cookie = "mcp-config=; path=/; max-age=0";
     });
+    await page.goto("/");
   });
 
   test("trigger button is visible beside the model picker", async ({
@@ -72,29 +81,96 @@ test.describe("MCP Panel", () => {
     }
   });
 
-  test("opens panel with JSON editor on click", async ({ page }) => {
-    await page.getByTestId("mcp-panel-trigger").click();
+  test("opens panel with two tabs (Servers + JSON), Servers default", async ({
+    page,
+  }) => {
+    await openPanel(page);
+
+    const serversTab = page.getByTestId("mcp-tab-servers");
+    const jsonTab = page.getByTestId("mcp-tab-json");
+    await expect(serversTab).toBeVisible();
+    await expect(jsonTab).toBeVisible();
+
+    // Servers tab content visible by default; JSON editor not yet mounted.
+    await expect(page.getByTestId("mcp-servers-list")).toBeVisible();
+    await expect(page.getByTestId("mcp-config-editor")).not.toBeVisible();
+  });
+
+  test("GitHub MCP server is seeded by default in Servers tab", async ({
+    page,
+  }) => {
+    await openPanel(page);
+
+    const card = page.getByTestId("mcp-server-card-github");
+    await expect(card).toBeVisible();
+    await expect(card.getByText(/github/i).first()).toBeVisible();
+    await expect(card.getByText(GITHUB_URL)).toBeVisible();
+    // Transport badge reflects HTTP transport from default config.
+    await expect(card.getByTestId("mcp-server-transport")).toHaveText(/http/i);
+  });
+
+  test("JSON tab shows the GitHub-seeded config in the editor", async ({
+    page,
+  }) => {
+    await openPanel(page);
+    await switchToJsonTab(page);
 
     const editor = page.getByTestId("mcp-config-editor");
     await expect(editor).toBeVisible();
-    // CodeMirror renders a contenteditable .cm-content node when mounted.
-    await expect(editor.locator(".cm-content")).toBeVisible();
-    await expect(page.getByTestId("mcp-config-save")).toBeVisible();
+    const parsed = JSON.parse(await readEditorValue(editor));
+    expect(parsed.mcpServers.github).toBeTruthy();
+    expect(parsed.mcpServers.github.url).toBe(GITHUB_URL);
   });
 
-  test("editor seeds with an empty mcpServers object by default", async ({
+  test("disconnect toggles status to Disconnected and shows Connect button", async ({
     page,
   }) => {
-    await page.getByTestId("mcp-panel-trigger").click();
-    const editor = page.getByTestId("mcp-config-editor");
-    const value = await readEditorValue(editor);
-    expect(JSON.parse(value)).toEqual({ mcpServers: {} });
+    await openPanel(page);
+
+    const card = page.getByTestId("mcp-server-card-github");
+    await expect(card.getByTestId("mcp-server-status")).toHaveText(
+      /connected/i
+    );
+
+    // Popover open animation can mark elements briefly "not stable"; force
+    // the click after we've already asserted visibility above.
+    await card.getByTestId("mcp-server-disconnect").click({ force: true });
+
+    await expect(card.getByTestId("mcp-server-status")).toHaveText(
+      /disconnected/i
+    );
+    await expect(card.getByTestId("mcp-server-connect")).toBeVisible();
   });
 
-  test("rejects invalid JSON with an error and disables save", async ({
+  test("connect after disconnect restores Connected state", async ({
     page,
   }) => {
-    await page.getByTestId("mcp-panel-trigger").click();
+    await openPanel(page);
+    const card = page.getByTestId("mcp-server-card-github");
+
+    await card.getByTestId("mcp-server-disconnect").click({ force: true });
+    await expect(card.getByTestId("mcp-server-status")).toHaveText(
+      /disconnected/i
+    );
+
+    await card.getByTestId("mcp-server-connect").click({ force: true });
+    await expect(card.getByTestId("mcp-server-status")).toHaveText(
+      /connected/i,
+      { timeout: 5000 }
+    );
+  });
+
+  test("reconnect button is visible while connected", async ({ page }) => {
+    await openPanel(page);
+    const card = page.getByTestId("mcp-server-card-github");
+    await expect(card.getByTestId("mcp-server-reconnect")).toBeVisible();
+  });
+
+  test("rejects invalid JSON in JSON tab and disables save", async ({
+    page,
+  }) => {
+    await openPanel(page);
+    await switchToJsonTab(page);
     const editor = page.getByTestId("mcp-config-editor");
     await setEditorValue(page, editor, "{ not valid json");
 
@@ -102,42 +178,11 @@ test.describe("MCP Panel", () => {
     await expect(page.getByTestId("mcp-config-save")).toBeDisabled();
   });
 
-  test("saves valid config and persists across reload", async ({ page }) => {
-    await page.getByTestId("mcp-panel-trigger").click();
-    const editor = page.getByTestId("mcp-config-editor");
-    await setEditorValue(page, editor, VALID_CONFIG);
-
-    // Wait for the React state to mirror the editor value, otherwise the
-    // save button can be re-rendered mid-click as draft updates settle.
-    await expect
-      .poll(async () => readEditorValue(editor))
-      .toBe(VALID_CONFIG);
-
-    const saveButton = page.getByTestId("mcp-config-save");
-    await expect(saveButton).toBeEnabled();
-    // CodeMirror dispatches asynchronous layout updates after typing that
-    // make the popover briefly look "not stable". We've already asserted
-    // enabled state above, so a forced click is safe here.
-    await saveButton.click({ force: true });
-
-    await expect(page.getByTestId("mcp-config-editor")).not.toBeVisible();
-
-    const stored = await page.evaluate(() =>
-      window.localStorage.getItem("mcp-config")
-    );
-    expect(stored).not.toBeNull();
-    expect(JSON.parse(stored as string)).toEqual(JSON.parse(VALID_CONFIG));
-
-    await page.reload();
-    await page.getByTestId("mcp-panel-trigger").click();
-    const reopened = page.getByTestId("mcp-config-editor");
-    await expect(reopened.locator(".cm-content")).toBeVisible();
-    const reopenedValue = await readEditorValue(reopened);
-    expect(JSON.parse(reopenedValue)).toEqual(JSON.parse(VALID_CONFIG));
-  });
-
-  test("rejects schema-invalid config (missing url)", async ({ page }) => {
-    await page.getByTestId("mcp-panel-trigger").click();
+  test("rejects schema-invalid config (missing url) in JSON tab", async ({
+    page,
+  }) => {
+    await openPanel(page);
+    await switchToJsonTab(page);
     const editor = page.getByTestId("mcp-config-editor");
     await setEditorValue(
       page,
@@ -147,5 +192,37 @@ test.describe("MCP Panel", () => {
 
     await expect(page.getByTestId("mcp-config-error")).toBeVisible();
     await expect(page.getByTestId("mcp-config-save")).toBeDisabled();
+  });
+
+  test("saves custom config from JSON tab and Servers tab reflects it", async ({
+    page,
+  }) => {
+    await openPanel(page);
+    await switchToJsonTab(page);
+    const editor = page.getByTestId("mcp-config-editor");
+    await setEditorValue(page, editor, VALID_CUSTOM_CONFIG);
+
+    await expect
+      .poll(async () => readEditorValue(editor))
+      .toBe(VALID_CUSTOM_CONFIG);
+
+    const saveButton = page.getByTestId("mcp-config-save");
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click({ force: true });
+
+    // Editor closes after save.
+    await expect(page.getByTestId("mcp-config-editor")).not.toBeVisible();
+
+    // Reopen — Servers tab shows the new server, GitHub is gone.
+    await openPanel(page);
+    await expect(page.getByTestId("mcp-server-card-acme")).toBeVisible();
+    await expect(
+      page.getByTestId("mcp-server-card-github")
+    ).not.toBeVisible();
+
+    const stored = await page.evaluate(() =>
+      window.localStorage.getItem("mcp-config")
+    );
+    expect(JSON.parse(stored as string)).toEqual(JSON.parse(VALID_CUSTOM_CONFIG));
   });
 });
