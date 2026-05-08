@@ -18,6 +18,7 @@ import {
   DEFAULT_CHAT_MODEL,
   getCapabilities,
 } from "@/lib/ai/models";
+import { isOllamaModelId } from "@/lib/ai/ollama/constants";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
@@ -81,9 +82,11 @@ export async function POST(request: Request) {
       return new ChatbotError("unauthorized:chat").toResponse();
     }
 
-    const chatModel = allowedModelIds.has(selectedChatModel)
-      ? selectedChatModel
-      : DEFAULT_CHAT_MODEL;
+    const chatModel =
+      allowedModelIds.has(selectedChatModel) ||
+      isOllamaModelId(selectedChatModel)
+        ? selectedChatModel
+        : DEFAULT_CHAT_MODEL;
 
     await checkIpRateLimit(ipAddress(request));
 

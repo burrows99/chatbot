@@ -42,6 +42,7 @@ import {
   DEFAULT_CHAT_MODEL,
   type ModelCapabilities,
 } from "@/lib/ai/models";
+import { isOllamaProviderId } from "@/lib/ai/ollama/constants";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -668,6 +669,8 @@ function PureModelSelectorCompact({
         <ModelSelectorList>
           {(() => {
             const curatedIds = new Set(chatModels.map((m) => m.id));
+            const isCurated = (model: ChatModel) =>
+              curatedIds.has(model.id) || isOllamaProviderId(model.provider);
             const allModels = dynamicModels
               ? [
                   ...chatModels,
@@ -686,7 +689,7 @@ function PureModelSelectorCompact({
               if (!grouped[key]) {
                 grouped[key] = [];
               }
-              grouped[key].push({ model, curated: curatedIds.has(model.id) });
+              grouped[key].push({ model, curated: isCurated(model) });
             }
 
             const sortedKeys = Object.keys(grouped).sort((a, b) => {
