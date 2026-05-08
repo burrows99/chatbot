@@ -1,3 +1,4 @@
+import { pipeJsonRender } from "@json-render/core";
 import { geolocation, ipAddress } from "@vercel/functions";
 import {
   convertToModelMessages,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
+import { catalog } from "@/lib/gen-ui/catalog";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import { redis } from "@/lib/storage/redis";
 import type { ChatMessage } from "@/lib/types";
@@ -215,7 +217,9 @@ export async function POST(request: Request) {
       execute: async ({ writer: dataStream }) => {
         const result = streamText({
           model: getLanguageModel(chatModel),
-          system: systemPrompt({ requestHints, supportsTools }),
+          system: `${systemPrompt({ requestHints, supportsTools })}
+
+${catalog.prompt({ mode: "inline" })}`,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
@@ -267,7 +271,9 @@ export async function POST(request: Request) {
         });
 
         dataStream.merge(
-          result.toUIMessageStream({ sendReasoning: isReasoningModel })
+          pipeJsonRender(
+            result.toUIMessageStream({ sendReasoning: isReasoningModel })
+          )
         );
 
         if (titlePromise) {

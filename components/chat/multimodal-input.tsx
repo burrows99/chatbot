@@ -54,6 +54,7 @@ import {
   PromptInputTools,
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
+import { GenUIToggleButton } from "./gen-ui-canvas";
 import { PaperclipIcon, StopIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import {
@@ -88,6 +89,8 @@ function PureMultimodalInput({
   editingMessage,
   onCancelEdit,
   isLoading,
+  isGenUIActive,
+  onToggleGenUI,
 }: {
   chatId: string;
   input: string;
@@ -108,6 +111,8 @@ function PureMultimodalInput({
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
   isLoading?: boolean;
+  isGenUIActive?: boolean;
+  onToggleGenUI?: () => void;
 }) {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
@@ -529,6 +534,12 @@ function PureMultimodalInput({
               selectedModelId={selectedModelId}
             />
             <MCPPanelCompact />
+            {onToggleGenUI && (
+              <GenUIToggleButton
+                isActive={isGenUIActive ?? false}
+                onClick={onToggleGenUI}
+              />
+            )}
           </PromptInputTools>
 
           {status === "submitted" ? (
@@ -580,6 +591,9 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.messages.length !== nextProps.messages.length) {
+      return false;
+    }
+    if (prevProps.isGenUIActive !== nextProps.isGenUIActive) {
       return false;
     }
 
