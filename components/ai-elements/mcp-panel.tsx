@@ -65,14 +65,14 @@ function PureMCPPanelCompact() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the cookie in sync whenever effective config changes, and re-probe
-  // any servers that are new or just reconnected.
+  // Keep the cookie in sync and re-probe whenever effective config changes.
+  // The mount effect above handles the initial write; this handles updates
+  // (e.g. after the user clicks Save). No mounted guard needed — the dep
+  // array stays constant size and avoids the React HMR size-change warning.
   useEffect(() => {
-    if (mounted) {
-      setMcpCookie(JSON.stringify(effective));
-      for (const [name, server] of Object.entries(effective.mcpServers)) {
-        probeServer(name, server);
-      }
+    setMcpCookie(JSON.stringify(effective));
+    for (const [name, server] of Object.entries(effective.mcpServers)) {
+      probeServer(name, server);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effective]);
