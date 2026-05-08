@@ -169,9 +169,11 @@ export class OllamaManager {
    * tool calling; small local models often don't and break the stream when
    * tool definitions are attached. Per-model overrides can refine this.
    */
-  capabilitiesFor(modelId: string): ModelCapabilities {
-    const isCloud = modelId.startsWith(`${OLLAMA_CLOUD_PROVIDER}:`);
-    return { tools: isCloud, vision: false, reasoning: false };
+  capabilitiesFor(_modelId: string): ModelCapabilities {
+    // Both local and cloud Ollama models use an OpenAI-compatible API that
+    // supports tool calling. Cloud models are more reliable, but local models
+    // that the user explicitly selects are expected to work.
+    return { tools: true, vision: false, reasoning: false };
   }
 
   capabilitiesForAll(modelIds: string[]): Record<string, ModelCapabilities> {
