@@ -59,7 +59,8 @@ const PurePreviewMessage = ({
       (part.type === "reasoning" &&
         "text" in part &&
         part.text?.trim().length > 0) ||
-      part.type.startsWith("tool-")
+      part.type.startsWith("tool-") ||
+      part.type === "dynamic-tool"
   );
   const isThinking = isAssistant && isLoading && !hasAnyContent;
 
@@ -136,7 +137,7 @@ const PurePreviewMessage = ({
         (state === "approval-responded" &&
           (part as { approval?: { approved?: boolean } }).approval?.approved ===
             false);
-      const widthClass = "w-[min(100%,450px)]";
+      const widthClass = "w-full";
 
       if (state === "output-available") {
         return (
@@ -270,11 +271,7 @@ const PurePreviewMessage = ({
       const { toolCallId, state } = part;
 
       return (
-        <Tool
-          className="w-[min(100%,450px)]"
-          defaultOpen={true}
-          key={toolCallId}
-        >
+        <Tool className="w-full" defaultOpen={true} key={toolCallId}>
           <ToolHeader state={state} type="tool-requestSuggestions" />
           <ToolContent>
             {state === "input-available" && <ToolInput input={part.input} />}
@@ -295,6 +292,50 @@ const PurePreviewMessage = ({
                   )
                 }
               />
+            )}
+          </ToolContent>
+        </Tool>
+      );
+    }
+
+    // MCP / dynamic tools (type === "dynamic-tool")
+    if (type === "dynamic-tool") {
+      const dynPart = part as {
+        toolCallId: string;
+        toolName: string;
+        state:
+          | "input-streaming"
+          | "input-available"
+          | "output-available"
+          | "output-error"
+          | "output-denied";
+        input?: unknown;
+        output?: unknown;
+        errorText?: string;
+      };
+      return (
+        <Tool className="w-full" defaultOpen={false} key={dynPart.toolCallId}>
+          <ToolHeader
+            state={dynPart.state}
+            type={`tool-${dynPart.toolName}` as `tool-${string}`}
+          />
+          <ToolContent>
+            {dynPart.input !== undefined && <ToolInput input={dynPart.input} />}
+            {dynPart.state === "output-available" &&
+              dynPart.output !== undefined && (
+                <ToolOutput
+                  errorText={dynPart.errorText}
+                  output={
+                    <pre className="overflow-x-auto whitespace-pre-wrap wrap-break-word px-4 py-3 font-mono text-xs text-foreground/80">
+                      {typeof dynPart.output === "string"
+                        ? dynPart.output
+                        : JSON.stringify(dynPart.output, null, 2)}
+                    </pre>
+                  }
+                />
+              )}
+            {dynPart.state === "output-error" && dynPart.errorText && (
+              <ToolOutput errorText={dynPart.errorText} output={null} />
             )}
           </ToolContent>
         </Tool>
