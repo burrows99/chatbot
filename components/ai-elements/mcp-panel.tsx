@@ -1,7 +1,7 @@
 "use client";
 
 import { ServerIcon } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useLocalStorage } from "usehooks-ts";
 import {
   Popover,
@@ -17,8 +17,7 @@ import {
 } from "@/lib/ai/mcp/config";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
-
-const PLACEHOLDER = JSON.stringify(EMPTY_MCP_CONFIG, null, 2);
+import { JsonEditor } from "./json-editor";
 
 function setMcpCookie(value: string) {
   const maxAge = 60 * 60 * 24 * 365;
@@ -50,6 +49,10 @@ function PureMCPPanelCompact() {
 
   const validation = useMemo(() => parseMcpConfig(draft), [draft]);
   const serverCount = mounted ? Object.keys(stored.mcpServers ?? {}).length : 0;
+
+  const handleChange = useCallback((next: string) => {
+    setDraft(next);
+  }, []);
 
   const handleSave = () => {
     if (!validation.ok) {
@@ -86,13 +89,10 @@ function PureMCPPanelCompact() {
               JSON config
             </span>
           </div>
-          <textarea
-            className="block h-64 w-full resize-none rounded-xl border border-input bg-input/30 px-3 py-2 font-mono text-[12px] outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          <JsonEditor
+            className="h-64"
             data-testid="mcp-config-editor"
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={PLACEHOLDER}
-            spellCheck={false}
-            style={{ fieldSizing: "fixed" } as React.CSSProperties}
+            onChange={handleChange}
             value={draft}
           />
           <div

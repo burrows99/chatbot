@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 const VALID_CONFIG = JSON.stringify(
   {
@@ -13,11 +13,35 @@ const VALID_CONFIG = JSON.stringify(
   2
 );
 
+async function readEditorValue(editor: Locator): Promise<string> {
+  // The editor exposes its current value via a data attribute that mirrors
+  // the React draft state. This avoids parsing CodeMirror's rendered DOM,
+  // which inserts zero-width chars and can mangle whitespace.
+  const value = await editor.getAttribute("data-mcp-value");
+  return value ?? "";
+}
+
+async function setEditorValue(
+  page: Page,
+  editor: Locator,
+  value: string
+): Promise<void> {
+  const content = editor.locator(".cm-content");
+  // The popover open animation can still be running here; force the click
+  // through rather than wait out the radix transform animation.
+  await content.click({ force: true });
+  await page.keyboard.press(
+    process.platform === "darwin" ? "Meta+A" : "Control+A"
+  );
+  await page.keyboard.press("Delete");
+  // insertText pastes raw text and preserves newlines/whitespace exactly,
+  // unlike .type() which fires per-key events that CM may auto-handle.
+  await page.keyboard.insertText(value);
+}
+
 test.describe("MCP Panel", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    // Clear any persisted config from prior tests, then keep storage as-is
-    // for the rest of the test (so reload assertions can verify persistence).
     await page.evaluate(() => {
       try {
         window.localStorage.removeItem("mcp-config");
@@ -38,7 +62,6 @@ test.describe("MCP Panel", () => {
     await expect(mcpButton).toBeVisible();
     await expect(modelButton).toBeVisible();
 
-    // Trigger should sit in the same toolbar/footer row as the model picker.
     const mcpBox = await mcpButton.boundingBox();
     const modelBox = await modelButton.boundingBox();
     expect(mcpBox).not.toBeNull();
@@ -54,6 +77,8 @@ test.describe("MCP Panel", () => {
 
     const editor = page.getByTestId("mcp-config-editor");
     await expect(editor).toBeVisible();
+    // CodeMirror renders a contenteditable .cm-content node when mounted.
+    await expect(editor.locator(".cm-content")).toBeVisible();
     await expect(page.getByTestId("mcp-config-save")).toBeVisible();
   });
 
@@ -62,9 +87,8 @@ test.describe("MCP Panel", () => {
   }) => {
     await page.getByTestId("mcp-panel-trigger").click();
     const editor = page.getByTestId("mcp-config-editor");
-    const value = await editor.inputValue();
-    const parsed = JSON.parse(value);
-    expect(parsed).toEqual({ mcpServers: {} });
+    const value = await readEditorValue(editor);
+    expect(JSON.parse(value)).toEqual({ mcpServers: {} });
   });
 
   test("rejects invalid JSON with an error and disables save", async ({
@@ -72,7 +96,7 @@ test.describe("MCP Panel", () => {
   }) => {
     await page.getByTestId("mcp-panel-trigger").click();
     const editor = page.getByTestId("mcp-config-editor");
-    await editor.fill("{ not valid json");
+    await setEditorValue(page, editor, "{ not valid json");
 
     await expect(page.getByTestId("mcp-config-error")).toBeVisible();
     await expect(page.getByTestId("mcp-config-save")).toBeDisabled();
@@ -80,34 +104,44 @@ test.describe("MCP Panel", () => {
 
   test("saves valid config and persists across reload", async ({ page }) => {
     await page.getByTestId("mcp-panel-trigger").click();
-    await page.getByTestId("mcp-config-editor").fill(VALID_CONFIG);
+    const editor = page.getByTestId("mcp-config-editor");
+    await setEditorValue(page, editor, VALID_CONFIG);
+
+    // Wait for the React state to mirror the editor value, otherwise the
+    // save button can be re-rendered mid-click as draft updates settle.
+    await expect
+      .poll(async () => readEditorValue(editor))
+      .toBe(VALID_CONFIG);
 
     const saveButton = page.getByTestId("mcp-config-save");
     await expect(saveButton).toBeEnabled();
-    await saveButton.click();
+    // CodeMirror dispatches asynchronous layout updates after typing that
+    // make the popover briefly look "not stable". We've already asserted
+    // enabled state above, so a forced click is safe here.
+    await saveButton.click({ force: true });
 
-    // Editor closes after a successful save.
     await expect(page.getByTestId("mcp-config-editor")).not.toBeVisible();
 
-    // Persistence: localStorage roundtrip.
     const stored = await page.evaluate(() =>
       window.localStorage.getItem("mcp-config")
     );
     expect(stored).not.toBeNull();
     expect(JSON.parse(stored as string)).toEqual(JSON.parse(VALID_CONFIG));
 
-    // Reload and reopen — the editor shows the saved value.
     await page.reload();
     await page.getByTestId("mcp-panel-trigger").click();
-    const reopenedValue = await page
-      .getByTestId("mcp-config-editor")
-      .inputValue();
+    const reopened = page.getByTestId("mcp-config-editor");
+    await expect(reopened.locator(".cm-content")).toBeVisible();
+    const reopenedValue = await readEditorValue(reopened);
     expect(JSON.parse(reopenedValue)).toEqual(JSON.parse(VALID_CONFIG));
   });
 
   test("rejects schema-invalid config (missing url)", async ({ page }) => {
     await page.getByTestId("mcp-panel-trigger").click();
-    await page.getByTestId("mcp-config-editor").fill(
+    const editor = page.getByTestId("mcp-config-editor");
+    await setEditorValue(
+      page,
+      editor,
       JSON.stringify({ mcpServers: { broken: { headers: {} } } })
     );
 
