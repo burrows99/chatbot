@@ -28,6 +28,7 @@ function setMcpCookie(value: string) {
   const maxAge = 60 * 60 * 24 * 365;
   // biome-ignore lint/suspicious/noDocumentCookie: needed for client-side cookie sync
   document.cookie = `${MCP_CONFIG_COOKIE}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}`;
+  console.log('[MCP] cookie written:', value);
 }
 
 function PureMCPPanelCompact() {

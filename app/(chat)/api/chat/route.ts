@@ -20,7 +20,7 @@ import {
   DEFAULT_CHAT_MODEL,
   getCapabilities,
 } from "@/lib/ai/models";
-import { isOllamaModelId } from "@/lib/ai/ollama/constants";
+import { isOllamaModelId, ollamaManager } from "@/lib/ai/ollama";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
@@ -188,18 +188,27 @@ export async function POST(request: Request) {
 
     const modelConfig = chatModels.find((m) => m.id === chatModel);
     const modelCapabilities = await getCapabilities();
-    const capabilities = modelCapabilities[chatModel];
+    const capabilities = ollamaManager.isOllamaModelId(chatModel)
+      ? ollamaManager.capabilitiesFor(chatModel)
+      : modelCapabilities[chatModel];
     const isReasoningModel = capabilities?.reasoning === true;
     const supportsTools = capabilities?.tools === true;
 
     const modelMessages = await convertToModelMessages(uiMessages);
 
     const mcpConfig = getMcpConfigFromRequest(request);
+    console.log(
+      "[MCP] supportsTools:",
+      supportsTools,
+      "| servers:",
+      Object.keys(mcpConfig.mcpServers)
+    );
     const mcp =
       supportsTools && Object.keys(mcpConfig.mcpServers).length > 0
         ? await loadMcpTools(mcpConfig)
         : { tools: {}, close: async () => undefined };
     const mcpToolNames = Object.keys(mcp.tools);
+    console.log("[MCP] loaded tools:", mcpToolNames);
 
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
