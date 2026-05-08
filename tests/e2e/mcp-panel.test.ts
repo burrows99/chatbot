@@ -211,6 +211,71 @@ test.describe("MCP Panel", () => {
     await expect(page.getByTestId("mcp-config-save")).toBeDisabled();
   });
 
+  test("shows masked token with show/hide toggle when server has Bearer header", async ({
+    page,
+  }) => {
+    const SECRET = "github_pat_supersecrettoken123";
+    const config = JSON.stringify(
+      {
+        mcpServers: {
+          gh: {
+            type: "http",
+            url: "https://api.githubcopilot.com/mcp/",
+            headers: { Authorization: `Bearer ${SECRET}` },
+          },
+        },
+      },
+      null,
+      2
+    );
+
+    await openPanel(page);
+    await switchToJsonTab(page);
+    const editor = page.getByTestId("mcp-config-editor");
+    await setEditorValue(page, editor, config);
+    await expect.poll(async () => readEditorValue(editor)).toBe(config);
+    await page.getByTestId("mcp-config-save").click({ force: true });
+
+    // Reopen on Servers tab.
+    await openPanel(page);
+    const card = page.getByTestId("mcp-server-card-gh");
+    await expect(card).toBeVisible();
+
+    // Token row exists, with the header name visible.
+    const tokenRow = card.getByTestId("mcp-server-token-row");
+    await expect(tokenRow).toBeVisible();
+    await expect(tokenRow.getByTestId("mcp-server-token-name")).toHaveText(
+      /authorization/i
+    );
+
+    // Hidden by default — input is type="password" so the browser masks it.
+    // The value attribute still holds the secret (so we can reveal without
+    // re-entry), but the type prevents it from being rendered as plain text.
+    const tokenValue = tokenRow.getByTestId("mcp-server-token-value");
+    await expect(tokenValue).toBeVisible();
+    await expect(tokenValue).toHaveAttribute("type", "password");
+    await expect(tokenValue).toHaveValue(SECRET);
+
+    // Toggle reveals the secret by switching the input type to text.
+    const toggle = tokenRow.getByTestId("mcp-server-token-toggle");
+    await toggle.click({ force: true });
+    await expect(tokenValue).toHaveAttribute("type", "text");
+    await expect(tokenValue).toHaveValue(SECRET);
+
+    // Toggle again hides it.
+    await toggle.click({ force: true });
+    await expect(tokenValue).toHaveAttribute("type", "password");
+  });
+
+  test("does not render token row for servers without sensitive headers", async ({
+    page,
+  }) => {
+    await openPanel(page);
+    const card = page.getByTestId("mcp-server-card-github");
+    await expect(card).toBeVisible();
+    await expect(card.getByTestId("mcp-server-token-row")).toHaveCount(0);
+  });
+
   test("saves custom config from JSON tab and Servers tab reflects it", async ({
     page,
   }) => {
