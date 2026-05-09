@@ -1,4 +1,4 @@
-import type { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+export type { OllamaProvider } from "ollama-ai-provider-v2";
 
 export type OllamaScope = "local" | "cloud";
 
@@ -10,7 +10,3 @@ export type OllamaTag = {
     parameter_size?: string;
   };
 };
-
-export type OpenAICompatibleProvider = ReturnType<
-  typeof createOpenAICompatible
->;

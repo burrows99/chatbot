@@ -299,9 +299,9 @@ const DocumentContent = ({ document }: { document: Document }) => {
           title={document.title}
         />
       ) : null}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-muted to-transparent dark:from-muted" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-muted to-transparent dark:from-muted" />
       {document.kind === "code" && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-muted to-transparent dark:from-muted" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-linear-to-l from-muted to-transparent dark:from-muted" />
       )}
     </div>
   );

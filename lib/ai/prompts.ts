@@ -65,18 +65,11 @@ About the origin of user's request:
 
 export const systemPrompt = ({
   requestHints,
-  supportsTools,
 }: {
   requestHints: RequestHints;
-  supportsTools: boolean;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
-
-  if (!supportsTools) {
-    return `${regularPrompt}\n\n${requestPrompt}`;
-  }
-
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${regularPrompt}\n\n${requestPrompt}`;
 };
 
 export const codePrompt = `
