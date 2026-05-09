@@ -17,7 +17,7 @@ export const dataGridDefinition = {
     pageSize: z.number().nullable(),
   }),
   description:
-    "A sortable, paginated data table. Use for lists, search results, or any tabular dataset. 'columns' defines headers — each 'key' must match a field in the row objects. Supported column types: text, number, date, badge, link (set hrefKey to the field containing the URL). Use as root or as a tab pane inside Tabs (with `visible: { $state: '/<key>', eq: '<value>' }`) for multi-view layouts.",
+    "A sortable, paginated data table. Use for lists, search results, or any tabular dataset. Bind data via `rows: { $state: '/<arrayPath>' }` — the referenced state path MUST be defined in the spec's `state` field. 'columns' defines headers — each 'key' must match a field in the row objects. Supported column types: text, number, date, badge, link (set hrefKey to the field containing the URL). Do NOT use the `repeat` directive on this element; rows are passed directly via the `rows` prop. Use as root or as a tab pane inside Tabs (with `visible: { $state, eq }`) for multi-view layouts.",
   example: {
     title: "Issues",
     columns: [
@@ -34,4 +34,4 @@ export const dataGridDefinition = {
       },
     ],
   },
-} as const;
+};

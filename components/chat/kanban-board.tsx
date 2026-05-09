@@ -17,22 +17,22 @@ import { Badge } from "@/components/ui/badge";
 interface BoardItem {
   id: string | number;
   title: string;
-  description?: string;
+  description?: string | null;
   column: string;
-  labels?: string[];
-  url?: string;
+  labels?: string[] | null;
+  url?: string | null;
 }
 
 interface BoardColumn {
   id: string;
   title: string;
-  color?: string;
+  color?: string | null;
 }
 
 interface KanbanBoardProps {
-  columns?: BoardColumn[];
-  items?: BoardItem[];
-  title?: string;
+  columns?: BoardColumn[] | null;
+  items?: BoardItem[] | null;
+  title?: string | null;
 }
 
 const DEFAULT_COLUMNS: BoardColumn[] = [
@@ -41,7 +41,12 @@ const DEFAULT_COLUMNS: BoardColumn[] = [
   { id: "done", title: "Done" },
 ];
 
-export function KanbanBoard({ columns, items = [], title }: KanbanBoardProps) {
+export function KanbanBoard({
+  columns,
+  items: rawItems,
+  title,
+}: KanbanBoardProps) {
+  const items = rawItems ?? [];
   const cols = columns && columns.length > 0 ? columns : DEFAULT_COLUMNS;
 
   const initialData = useMemo(() => {

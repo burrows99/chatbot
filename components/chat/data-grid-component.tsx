@@ -21,29 +21,30 @@ import { DataGridTable } from "@/components/reui/data-grid/data-grid-table";
 export interface DataGridColumn {
   key: string;
   header: string;
-  type?: "text" | "link" | "badge" | "number" | "date";
+  type?: "text" | "link" | "badge" | "number" | "date" | null;
   /** For type "link": which key holds the href */
-  hrefKey?: string;
-  width?: number;
-  align?: "left" | "right" | "center";
+  hrefKey?: string | null;
+  width?: number | null;
+  align?: "left" | "right" | "center" | null;
 }
 
 export interface DataGridComponentProps {
-  title?: string;
+  title?: string | null;
   columns: DataGridColumn[];
   rows: Record<string, unknown>[];
-  pageSize?: number;
+  pageSize?: number | null;
 }
 
 export function DataGridComponent({
   title,
   columns = [],
   rows = [],
-  pageSize = 10,
+  pageSize,
 }: DataGridComponentProps) {
+  const effectivePageSize = pageSize ?? 10;
   const [pagination, setPagination] = useState({
     pageIndex: 0,
-    pageSize,
+    pageSize: effectivePageSize,
   });
 
   const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([]);
@@ -53,7 +54,7 @@ export function DataGridComponent({
       columns.map((col) => ({
         accessorKey: col.key,
         header: col.header,
-        size: col.width,
+        size: col.width ?? undefined,
         meta: {
           headerClassName:
             col.align === "right" ? "text-right rtl:text-left" : "",

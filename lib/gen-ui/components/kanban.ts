@@ -22,7 +22,7 @@ export const kanbanBoardDefinition = {
     items: z.array(kanbanItemSchema).nullable(),
   }),
   description:
-    "A draggable Kanban board for task or issue tracking. Organises items into columns (e.g. todo / in_progress / done). Each item has a `column` field matching a column `id`. Use for boards, backlogs, sprint views, or any grouped-by-status data. Use as root or as a tab pane inside Tabs (with `visible: { $state: '/<key>', eq: '<value>' }`) for multi-view layouts. Map issue state: open→todo, in_progress→in_progress, closed→done.",
+    "A draggable Kanban board for task or issue tracking. Organises items into columns (e.g. todo / in_progress / done). Bind data via `items: { $state: '/<arrayPath>' }` — the referenced state array must contain objects with a `column` field matching a column `id`. Do NOT use the `repeat` directive on this element; items are passed directly via the `items` prop. Use as root or as a tab pane inside Tabs (with `visible: { $state, eq }`) for multi-view layouts. Map issue state: open→todo, in_progress→in_progress, closed→done.",
   example: {
     title: "Tasks",
     columns: [
@@ -32,4 +32,4 @@ export const kanbanBoardDefinition = {
     ],
     items: [{ id: 1, title: "Example task", column: "todo" }],
   },
-} as const;
+};

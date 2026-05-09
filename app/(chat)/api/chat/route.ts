@@ -223,6 +223,9 @@ export async function POST(request: Request) {
           ? catalog.prompt({
               mode: "inline",
               system: baseSystem,
+              customRules: [
+                "ROOT COHERENCE: The value of `/root` MUST equal the key of one of your `/elements/<key>` patches. After emitting all patches, self-check: does `elements[root]` exist? If you set `root` to a semantic name (e.g. 'dashboard'), you must also emit `{\"op\":\"add\",\"path\":\"/elements/dashboard\",\"value\":{...}}` as your top-level container.",
+              ],
             })
           : baseSystem;
 
