@@ -1,0 +1,54 @@
+# Local development services for chatbot
+# Use postgres/example user/password credentials
+
+services:
+
+  # Sourced from : https://hub.docker.com/_/postgres
+  db:
+    image: postgres
+    restart: always
+    # set shared memory limit when using docker compose
+    shm_size: 128mb
+    # or set shared memory limit when deploy via swarm stack
+    #volumes:
+    #  - type: tmpfs
+    #    target: /dev/shm
+    #    tmpfs:
+    #      size: 134217728 # 128*2^20 bytes = 128Mb
+    env_file:
+      - .env.local
+    ports:
+      - "5432:5432"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  # Sourced from: https://hub.docker.com/r/minio/minio
+  # Command mirrors: podman run -p 9000:9000 -p 9001:9001 quay.io/minio/minio server /data --console-address ":9001"
+  # Default credentials: minioadmin / minioadmin
+  # Console: http://127.0.0.1:9001 — API/S3: http://127.0.0.1:9000
+  minio:
+    image: quay.io/minio/minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    env_file:
+      - .env.local
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./.volumes/minio:/data
+
+  # Sourced from: https://hub.docker.com/_/redis
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./.volumes/redis:/data

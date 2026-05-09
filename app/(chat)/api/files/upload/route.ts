@@ -1,17 +1,14 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-
 import { auth } from "@/app/(auth)/auth";
+import { blob } from "@/lib/storage/blob";
 
 const FileSchema = z.object({
   file: z
-    .instanceof(Blob)
-    .refine((file) => file.size <= 5 * 1024 * 1024, {
-      message: "File size should be less than 5MB",
-    })
-    .refine((file) => ["image/jpeg", "image/png"].includes(file.type), {
-      message: "File type should be JPEG or PNG",
+    .file()
+    .max(5 * 1024 * 1024, { error: "File size should be less than 5MB" })
+    .mime(["image/jpeg", "image/png"], {
+      error: "File type should be JPEG or PNG",
     }),
 });
 
@@ -37,8 +34,8 @@ export async function POST(request: Request) {
     const validatedFile = FileSchema.safeParse({ file });
 
     if (!validatedFile.success) {
-      const errorMessage = validatedFile.error.errors
-        .map((error) => error.message)
+      const errorMessage = validatedFile.error.issues
+        .map((issue) => issue.message)
         .join(", ");
 
       return NextResponse.json({ error: errorMessage }, { status: 400 });
@@ -49,7 +46,7 @@ export async function POST(request: Request) {
     const fileBuffer = await file.arrayBuffer();
 
     try {
-      const data = await put(`${safeName}`, fileBuffer, {
+      const data = await blob.put(`${safeName}`, fileBuffer, {
         access: "public",
       });
 

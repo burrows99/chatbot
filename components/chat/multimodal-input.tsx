@@ -25,6 +25,7 @@ import {
 import { toast } from "sonner";
 import useSWR from "swr";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
+import { MCPPanelCompact } from "@/components/ai-elements/mcp-panel";
 import {
   ModelSelector,
   ModelSelectorContent,
@@ -42,6 +43,7 @@ import {
   DEFAULT_CHAT_MODEL,
   type ModelCapabilities,
 } from "@/lib/ai/models";
+import { isOllamaProviderId } from "@/lib/ai/ollama/constants";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -52,6 +54,7 @@ import {
   PromptInputTools,
 } from "../ai-elements/prompt-input";
 import { Button } from "../ui/button";
+import { GenUIToggleButton } from "./gen-ui-canvas";
 import { PaperclipIcon, StopIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import {
@@ -86,6 +89,8 @@ function PureMultimodalInput({
   editingMessage,
   onCancelEdit,
   isLoading,
+  isGenUIActive,
+  onToggleGenUI,
 }: {
   chatId: string;
   input: string;
@@ -106,6 +111,8 @@ function PureMultimodalInput({
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
   isLoading?: boolean;
+  isGenUIActive?: boolean;
+  onToggleGenUI?: () => void;
 }) {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
@@ -419,7 +426,7 @@ function PureMultimodalInput({
       </div>
 
       <PromptInput
-        className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
+        className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-(--shadow-composer) [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-(--shadow-composer-focus)"
         onSubmit={() => {
           if (input.startsWith("/")) {
             const query = input.slice(1).trim();
@@ -526,6 +533,13 @@ function PureMultimodalInput({
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
             />
+            <MCPPanelCompact />
+            {onToggleGenUI && (
+              <GenUIToggleButton
+                isActive={isGenUIActive ?? false}
+                onClick={onToggleGenUI}
+              />
+            )}
           </PromptInputTools>
 
           {status === "submitted" ? (
@@ -577,6 +591,9 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.messages.length !== nextProps.messages.length) {
+      return false;
+    }
+    if (prevProps.isGenUIActive !== nextProps.isGenUIActive) {
       return false;
     }
 
@@ -668,6 +685,8 @@ function PureModelSelectorCompact({
         <ModelSelectorList>
           {(() => {
             const curatedIds = new Set(chatModels.map((m) => m.id));
+            const isCurated = (model: ChatModel) =>
+              curatedIds.has(model.id) || isOllamaProviderId(model.provider);
             const allModels = dynamicModels
               ? [
                   ...chatModels,
@@ -686,7 +705,7 @@ function PureModelSelectorCompact({
               if (!grouped[key]) {
                 grouped[key] = [];
               }
-              grouped[key].push({ model, curated: curatedIds.has(model.id) });
+              grouped[key].push({ model, curated: isCurated(model) });
             }
 
             const sortedKeys = Object.keys(grouped).sort((a, b) => {
