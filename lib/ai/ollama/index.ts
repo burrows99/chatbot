@@ -1,5 +1,5 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
+import { createOllama } from "ollama-ai-provider-v2";
 import type { ChatModel, ModelCapabilities } from "../models";
 import {
   DEFAULT_CLOUD_BASE_URL,
@@ -8,13 +8,11 @@ import {
   DEFAULT_TITLE_MODEL_NAME,
   isOllamaModelId,
   isOllamaProviderId,
-  LOCAL_API_KEY_PLACEHOLDER,
   OLLAMA_CLOUD_PROVIDER,
   OLLAMA_LOCAL_PROVIDER,
-  OPENAI_COMPAT_PATH,
   TAGS_PATH,
 } from "./constants";
-import type { OllamaScope, OllamaTag, OpenAICompatibleProvider } from "./types";
+import type { OllamaScope, OllamaTag } from "./types";
 
 export {
   isOllamaModelId,
@@ -27,75 +25,25 @@ export type { OllamaScope, OllamaTag } from "./types";
 export class OllamaManager {
   private static _instance: OllamaManager | null = null;
 
-  private _localBaseURL!: string;
-  private _cloudBaseURL!: string;
-  private _cloudApiKey: string | undefined;
-  private _tagRevalidateSeconds!: number;
-
-  private _localProvider!: OpenAICompatibleProvider;
-  private _cloudProvider: OpenAICompatibleProvider | null = null;
+  private readonly _localBaseURL: string;
+  private readonly _cloudBaseURL: string;
+  private readonly _cloudApiKey: string | undefined;
+  private readonly _tagRevalidateSeconds: number;
 
   private constructor() {
-    this.localBaseURL = process.env.OLLAMA_BASE_URL ?? DEFAULT_LOCAL_BASE_URL;
-    this.cloudBaseURL = DEFAULT_CLOUD_BASE_URL;
-    this.cloudApiKey = process.env.OLLAMA_API_KEY || undefined;
-    this.tagRevalidateSeconds = DEFAULT_TAG_REVALIDATE_SECONDS;
+    this._localBaseURL = (
+      process.env.OLLAMA_BASE_URL ?? DEFAULT_LOCAL_BASE_URL
+    ).replace(/\/$/, "");
+    this._cloudBaseURL = DEFAULT_CLOUD_BASE_URL;
+    this._cloudApiKey = process.env.OLLAMA_API_KEY || undefined;
+    this._tagRevalidateSeconds = DEFAULT_TAG_REVALIDATE_SECONDS;
   }
 
   static getInstance(): OllamaManager {
     if (!OllamaManager._instance) {
       OllamaManager._instance = new OllamaManager();
     }
-    return OllamaManager._instance;
-  }
-
-  // --- config accessors ---
-
-  get localBaseURL(): string {
-    return this._localBaseURL;
-  }
-
-  set localBaseURL(value: string) {
-    this._localBaseURL = value.replace(/\/$/, "");
-    this._localProvider = createOpenAICompatible({
-      name: OLLAMA_LOCAL_PROVIDER,
-      baseURL: `${this._localBaseURL}${OPENAI_COMPAT_PATH}`,
-      apiKey: LOCAL_API_KEY_PLACEHOLDER,
-    });
-  }
-
-  get cloudBaseURL(): string {
-    return this._cloudBaseURL;
-  }
-
-  set cloudBaseURL(value: string) {
-    this._cloudBaseURL = value.replace(/\/$/, "");
-    this.refreshCloudProvider();
-  }
-
-  get cloudApiKey(): string | undefined {
-    return this._cloudApiKey;
-  }
-
-  set cloudApiKey(value: string | undefined) {
-    this._cloudApiKey = value || undefined;
-    this.refreshCloudProvider();
-  }
-
-  get tagRevalidateSeconds(): number {
-    return this._tagRevalidateSeconds;
-  }
-
-  set tagRevalidateSeconds(value: number) {
-    this._tagRevalidateSeconds = value;
-  }
-
-  get localProvider(): OpenAICompatibleProvider {
-    return this._localProvider;
-  }
-
-  get cloudProvider(): OpenAICompatibleProvider | null {
-    return this._cloudProvider;
+    return OllamaManager._instance as OllamaManager;
   }
 
   // --- public API ---
@@ -109,35 +57,32 @@ export class OllamaManager {
   }
 
   isCloudConfigured(): boolean {
-    return this._cloudProvider !== null;
+    return !!this._cloudApiKey;
   }
 
-  /**
-   * Returns a small fast cloud Ollama model suitable for title generation,
-   * or null if cloud isn't configured. Used so the app can stop depending
-   * on the Vercel AI Gateway for title generation.
-   */
   getTitleLanguageModel(): LanguageModel | null {
-    if (!this._cloudProvider) {
+    if (!this._cloudApiKey) {
       return null;
     }
-    return this._cloudProvider(DEFAULT_TITLE_MODEL_NAME);
+    return this.makeProvider(this._cloudBaseURL, this._cloudApiKey).chat(
+      DEFAULT_TITLE_MODEL_NAME
+    );
   }
 
   getLanguageModel(modelId: string): LanguageModel {
     if (modelId.startsWith(`${OLLAMA_LOCAL_PROVIDER}:`)) {
-      return this._localProvider(
-        this.stripPrefix(modelId, OLLAMA_LOCAL_PROVIDER)
-      );
+      const name = this.stripPrefix(modelId, OLLAMA_LOCAL_PROVIDER);
+      return this.makeProvider(this._localBaseURL).chat(name);
     }
     if (modelId.startsWith(`${OLLAMA_CLOUD_PROVIDER}:`)) {
-      if (!this._cloudProvider) {
+      if (!this._cloudApiKey) {
         throw new Error(
           "OLLAMA_API_KEY is not configured — cloud Ollama models are unavailable."
         );
       }
-      return this._cloudProvider(
-        this.stripPrefix(modelId, OLLAMA_CLOUD_PROVIDER)
+      const name = this.stripPrefix(modelId, OLLAMA_CLOUD_PROVIDER);
+      return this.makeProvider(this._cloudBaseURL, this._cloudApiKey).chat(
+        name
       );
     }
     throw new Error(`Not an Ollama model id: ${modelId}`);
@@ -164,16 +109,8 @@ export class OllamaManager {
     return [...local, ...cloud];
   }
 
-  /**
-   * Default capability hints. Cloud models reliably implement OpenAI-format
-   * tool calling; small local models often don't and break the stream when
-   * tool definitions are attached. Per-model overrides can refine this.
-   */
   capabilitiesFor(_modelId: string): ModelCapabilities {
-    // Both local and cloud Ollama models use an OpenAI-compatible API that
-    // supports tool calling. Cloud models are more reliable, but local models
-    // that the user explicitly selects are expected to work.
-    return { tools: true, vision: false, reasoning: false };
+    return { tools: true, vision: false, reasoning: true };
   }
 
   capabilitiesForAll(modelIds: string[]): Record<string, ModelCapabilities> {
@@ -186,14 +123,11 @@ export class OllamaManager {
 
   // --- internals ---
 
-  private refreshCloudProvider(): void {
-    this._cloudProvider = this._cloudApiKey
-      ? createOpenAICompatible({
-          name: OLLAMA_CLOUD_PROVIDER,
-          baseURL: `${this._cloudBaseURL}${OPENAI_COMPAT_PATH}`,
-          apiKey: this._cloudApiKey,
-        })
-      : null;
+  private makeProvider(baseURL: string, apiKey?: string) {
+    return createOllama({
+      baseURL: `${baseURL}/api`,
+      ...(apiKey ? { headers: { Authorization: `Bearer ${apiKey}` } } : {}),
+    });
   }
 
   private stripPrefix(modelId: string, prefix: string): string {

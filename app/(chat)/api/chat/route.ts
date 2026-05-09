@@ -218,13 +218,17 @@ export async function POST(request: Request) {
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
+        const baseSystem = systemPrompt({ requestHints, supportsTools });
+        const finalSystem = supportsTools
+          ? catalog.prompt({
+              mode: "inline",
+              system: baseSystem,
+            })
+          : baseSystem;
+
         const result = streamText({
           model: getLanguageModel(chatModel),
-          system: `${systemPrompt({ requestHints, supportsTools })}
-
-${catalog.prompt({
-  mode: "inline",
-})}`,
+          system: finalSystem,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
@@ -245,6 +249,10 @@ ${catalog.prompt({
             ...(modelConfig?.reasoningEffort && {
               openai: { reasoningEffort: modelConfig.reasoningEffort },
             }),
+            ...(isReasoningModel &&
+              ollamaManager.isOllamaModelId(chatModel) && {
+                ollama: { think: true },
+              }),
           },
           tools: {
             getWeather,
@@ -275,11 +283,7 @@ ${catalog.prompt({
           },
         });
 
-        dataStream.merge(
-          pipeJsonRender(
-            result.toUIMessageStream({ sendReasoning: isReasoningModel })
-          )
-        );
+        dataStream.merge(pipeJsonRender(result.toUIMessageStream()));
 
         if (titlePromise) {
           const title = await titlePromise;

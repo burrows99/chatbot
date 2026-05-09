@@ -164,6 +164,9 @@ importers:
       next-themes:
         specifier: ^0.3.0
         version: 0.3.0(react-dom@19.0.1(react@19.0.1))(react@19.0.1)
+      ollama-ai-provider-v2:
+        specifier: ^3.5.0
+        version: 3.5.0(ai@6.0.116(zod@4.3.5))(zod@4.3.5)
       orderedmap:
         specifier: ^2.1.1
         version: 2.1.1
@@ -4184,6 +4187,13 @@ packages:
 
   obuf@1.1.2:
     resolution: {integrity: sha512-PX1wu0AmAdPqOL1mWhqmlOd8kOIZQwGZw6rh7uby9fTc5lhaOWFLX3I6R1hrF9k3zUY40e6igsLGkDXK92LJNg==}
+
+  ollama-ai-provider-v2@3.5.0:
+    resolution: {integrity: sha512-+s/aYIYa91z2Vk3AkGAz3BaPAQ0flS2eFZD3BN2mD/N6W6YQbcookyu6pc2cbc8SP5VGpNB857WJ0eHDjKXsXw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      ai: ^5.0.0 || ^6.0.0
+      zod: ^4.0.16
 
   on-finished@2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
@@ -9301,6 +9311,13 @@ snapshots:
 
   obuf@1.1.2:
     optional: true
+
+  ollama-ai-provider-v2@3.5.0(ai@6.0.116(zod@4.3.5))(zod@4.3.5):
+    dependencies:
+      '@ai-sdk/provider': 3.0.10
+      '@ai-sdk/provider-utils': 4.0.27(zod@4.3.5)
+      ai: 6.0.116(zod@4.3.5)
+      zod: 4.3.5
 
   on-finished@2.4.1:
     dependencies:
