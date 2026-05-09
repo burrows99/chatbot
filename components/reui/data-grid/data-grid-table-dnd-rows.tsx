@@ -222,7 +222,7 @@ function DataGridTableDndRows<TData>({
       <DataGridTableViewport
         className={
           isDraggingRow
-            ? "relative cursor-grabbing [&_*]:cursor-grabbing!"
+            ? "relative cursor-grabbing **:cursor-grabbing!"
             : "relative"
         }
         viewportRef={tableContainerRef}

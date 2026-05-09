@@ -40,7 +40,7 @@ import {
   DataGridTableBody,
   DataGridTableBodyRow,
   DataGridTableBodyRowCell,
-  DataGridTableBodyRowExpandded,
+  DataGridTableBodyRowExpanded,
   DataGridTableBodyRowSkeleton,
   DataGridTableBodyRowSkeletonCell,
   DataGridTableEmpty,
@@ -226,7 +226,7 @@ function DataGridTableDnd<TData>({
       <DataGridTableViewport
         className={
           isDraggingColumn
-            ? "relative cursor-grabbing [&_*]:cursor-grabbing!"
+            ? "relative cursor-grabbing **:cursor-grabbing!"
             : "relative"
         }
         viewportRef={containerRef}
@@ -295,7 +295,7 @@ function DataGridTableDnd<TData>({
                         })}
                     </DataGridTableBodyRow>
                     {row.getIsExpanded() && (
-                      <DataGridTableBodyRowExpandded row={row} />
+                      <DataGridTableBodyRowExpanded row={row} />
                     )}
                   </Fragment>
                 );
