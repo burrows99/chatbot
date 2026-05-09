@@ -18,6 +18,15 @@ const kanbanColumnSchema = z.object({
   color: z.string().optional(),
 });
 
+const dataGridColumnSchema = z.object({
+  key: z.string(),
+  header: z.string(),
+  type: z.enum(["text", "link", "badge", "number", "date"]).optional(),
+  hrefKey: z.string().optional(),
+  width: z.number().optional(),
+  align: z.enum(["left", "right", "center"]).optional(),
+});
+
 export const catalog = defineCatalog(schema, {
   components: {
     ...shadcnComponentDefinitions,
@@ -28,7 +37,7 @@ export const catalog = defineCatalog(schema, {
         items: z.array(kanbanItemSchema).optional(),
       }),
       description:
-        "A draggable Kanban board with columns and cards. Each item has a `column` field matching a column `id`. Default columns: todo, in_progress, done. IMPORTANT: KanbanBoard must always be the ROOT element (set /root to its key). Never nest it as a child of Card or any other component.",
+        "A draggable Kanban board with columns and cards. Each item has a `column` field matching a column `id`. Default columns: todo, in_progress, done. Designed to fill the full canvas — best used as the root element or as a tab pane inside Tabs.",
       example: {
         title: "Tasks",
         columns: [
@@ -37,6 +46,32 @@ export const catalog = defineCatalog(schema, {
           { id: "done", title: "Done" },
         ],
         items: [{ id: 1, title: "Example task", column: "todo" }],
+      },
+    },
+    DataGrid: {
+      props: z.object({
+        title: z.string().optional(),
+        columns: z.array(dataGridColumnSchema),
+        rows: z.array(z.record(z.string(), z.unknown())),
+        pageSize: z.number().optional(),
+      }),
+      description:
+        "A sortable, paginated data table. 'columns' defines the headers (key, header, type, optional hrefKey/width/align). 'rows' is an array of plain objects matching the column keys. Use type 'link' with 'hrefKey' to render clickable URLs. Use type 'number' for numeric values. Designed to fill the full canvas — best used as the root element or as a tab pane inside Tabs.",
+      example: {
+        title: "Issues",
+        columns: [
+          { key: "title", header: "Title", type: "link", hrefKey: "url" },
+          { key: "state", header: "State" },
+          { key: "number", header: "#", type: "number", align: "right" },
+        ],
+        rows: [
+          {
+            title: "Fix login bug",
+            url: "https://github.com/...",
+            state: "open",
+            number: 42,
+          },
+        ],
       },
     },
   },
