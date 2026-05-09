@@ -1,7 +1,7 @@
 "use client";
 
 import { GripVerticalIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Kanban,
   KanbanBoard as KanbanBoardPrimitive,
@@ -43,21 +43,23 @@ const DEFAULT_COLUMNS: BoardColumn[] = [
 
 export function KanbanBoard({
   columns,
-  items: rawItems,
+  items,
   title,
 }: KanbanBoardProps) {
-  const items = rawItems ?? [];
   const cols = columns && columns.length > 0 ? columns : DEFAULT_COLUMNS;
 
-  const initialData = useMemo(() => {
+  const derived = useMemo(() => {
     const result: Record<string, BoardItem[]> = {};
     for (const col of cols) {
-      result[col.id] = items.filter((item) => item.column === col.id);
+      result[col.id] = (items ?? []).filter((item) => item.column === col.id);
     }
     return result;
   }, [cols, items]);
 
-  const [columnData, setColumnData] = useState(initialData);
+  const [columnData, setColumnData] = useState(derived);
+  useEffect(() => {
+    setColumnData(derived);
+  }, [derived]);
 
   const colMap = useMemo(
     () => Object.fromEntries(cols.map((c) => [c.id, c])),

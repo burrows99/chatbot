@@ -225,6 +225,7 @@ export async function POST(request: Request) {
               system: baseSystem,
               customRules: [
                 "ROOT COHERENCE: The value of `/root` MUST equal the key of one of your `/elements/<key>` patches. After emitting all patches, self-check: does `elements[root]` exist? If you set `root` to a semantic name (e.g. 'dashboard'), you must also emit `{\"op\":\"add\",\"path\":\"/elements/dashboard\",\"value\":{...}}` as your top-level container.",
+                "STATE ARRAY UNIQUENESS: Each item in a state array (e.g. `/state/tasks`, `/state/rows`, `/state/items`) MUST appear exactly once. Choose ONE emission strategy per array: either a single bulk `{\"op\":\"add\",\"path\":\"/state/<key>\",\"value\":[...]}` with the complete array, OR per-item `{\"op\":\"add\",\"path\":\"/state/<key>/-\",\"value\":{...}}` patches — never both. Never re-emit items already in the array.",
               ],
             })
           : baseSystem;

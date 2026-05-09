@@ -218,10 +218,13 @@ export function Pattern() {
         header: "Location",
         cell: ({ row }) => (
           <div className="flex items-center gap-1.5">
-            <img
-              alt={row.original.flag}
-              className="size-4 rounded-full object-cover"
-              src={`https://flagcdn.com/${row.original.flag.toLowerCase()}.svg`}
+            <div
+              aria-label={row.original.flag}
+              className="size-4 rounded-full object-cover bg-cover bg-center"
+              role="img"
+              style={{
+                backgroundImage: `url('https://flagcdn.com/${row.original.flag.toLowerCase()}.svg')`,
+              }}
             />
             <div className="text-foreground font-medium">
               {row.original.location}
