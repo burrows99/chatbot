@@ -1,28 +1,27 @@
-"use client"
+"use client";
 
-import { useMemo, useState } from "react"
-import { Badge } from "@/components/reui/badge"
-import { Column } from "@tanstack/react-table"
-
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import type { Column } from "@tanstack/react-table";
+import { CheckIcon, CirclePlusIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Badge } from "@/components/reui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import { CirclePlusIcon, CheckIcon } from "lucide-react"
+} from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface DataGridColumnFilterProps<TData, TValue> {
-  column?: Column<TData, TValue>
-  title?: string
+  column?: Column<TData, TValue>;
+  title?: string;
   options: {
-    label: string
-    value: string
-    icon?: React.ComponentType<{ className?: string }>
-  }[]
+    label: string;
+    value: string;
+    icon?: React.ComponentType<{ className?: string }>;
+  }[];
 }
 
 function DataGridColumnFilter<TData, TValue>({
@@ -30,37 +29,39 @@ function DataGridColumnFilter<TData, TValue>({
   title,
   options,
 }: DataGridColumnFilterProps<TData, TValue>) {
-  const facets = column?.getFacetedUniqueValues()
-  const selectedValues = new Set(column?.getFilterValue() as string[])
-  const [searchQuery, setSearchQuery] = useState("")
+  const facets = column?.getFacetedUniqueValues();
+  const selectedValues = new Set(column?.getFilterValue() as string[]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredOptions = useMemo(() => {
-    if (!searchQuery) return options
+    if (!searchQuery) {
+      return options;
+    }
     return options.filter((option) =>
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [options, searchQuery])
+    );
+  }, [options, searchQuery]);
 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button size="sm" variant="outline">
           <CirclePlusIcon className="size-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
-              <Separator orientation="vertical" className="mx-2 h-4" />
+              <Separator className="mx-2 h-4" orientation="vertical" />
               <Badge
-                variant="secondary"
                 className="rounded-sm px-1 font-normal lg:hidden"
+                variant="secondary"
               >
                 {selectedValues.size}
               </Badge>
               <div className="hidden space-x-1 lg:flex">
                 {selectedValues.size > 2 ? (
                   <Badge
-                    variant="secondary"
                     className="rounded-sm px-1 font-normal"
+                    variant="secondary"
                   >
                     {selectedValues.size} selected
                   </Badge>
@@ -69,9 +70,9 @@ function DataGridColumnFilter<TData, TValue>({
                     .filter((option) => selectedValues.has(option.value))
                     .map((option) => (
                       <Badge
-                        variant="secondary"
-                        key={option.value}
                         className="rounded-sm px-1 font-normal"
+                        key={option.value}
+                        variant="secondary"
                       >
                         {option.label}
                       </Badge>
@@ -82,13 +83,13 @@ function DataGridColumnFilter<TData, TValue>({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
+      <PopoverContent align="start" className="w-[200px] p-0">
         <div className="p-2">
           <Input
+            className="h-8"
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={title}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8"
           />
         </div>
         <div className="max-h-[300px] overflow-y-auto">
@@ -99,25 +100,26 @@ function DataGridColumnFilter<TData, TValue>({
           ) : (
             <div className="p-1">
               {filteredOptions.map((option) => {
-                const isSelected = selectedValues.has(option.value)
+                const isSelected = selectedValues.has(option.value);
                 return (
-                  <div
+                  <button
+                    className={cn(
+                      "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none",
+                      "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                    )}
                     key={option.value}
                     onClick={() => {
                       if (isSelected) {
-                        selectedValues.delete(option.value)
+                        selectedValues.delete(option.value);
                       } else {
-                        selectedValues.add(option.value)
+                        selectedValues.add(option.value);
                       }
-                      const filterValues = Array.from(selectedValues)
+                      const filterValues = Array.from(selectedValues);
                       column?.setFilterValue(
                         filterValues.length ? filterValues : undefined
-                      )
+                      );
                     }}
-                    className={cn(
-                      "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none",
-                      "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                    )}
+                    type="button"
                   >
                     <div
                       className={cn(
@@ -138,8 +140,8 @@ function DataGridColumnFilter<TData, TValue>({
                         {facets.get(option.value)}
                       </span>
                     )}
-                  </div>
-                )
+                  </button>
+                );
               })}
             </div>
           )}
@@ -147,19 +149,20 @@ function DataGridColumnFilter<TData, TValue>({
             <>
               <div className="bg-border -mx-1 my-1 h-px" />
               <div className="p-1">
-                <div
+                <button
+                  className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-default items-center justify-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none"
                   onClick={() => column?.setFilterValue(undefined)}
-                  className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center justify-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none"
+                  type="button"
                 >
                   Clear filters
-                </div>
+                </button>
               </div>
             </>
           )}
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
-export { DataGridColumnFilter, type DataGridColumnFilterProps }
+export { DataGridColumnFilter, type DataGridColumnFilterProps };

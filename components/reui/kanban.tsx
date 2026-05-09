@@ -61,11 +61,15 @@ interface KanbanContextProps<T> {
 
 const KanbanContext = createContext<KanbanContextProps<any>>({
   columns: {},
-  setColumns: () => {},
+  setColumns: () => {
+    /* noop */
+  },
   getItemId: () => "",
   columnIds: [],
   activeId: null,
-  setActiveId: () => {},
+  setActiveId: () => {
+    /* noop */
+  },
   findContainer: () => undefined,
   isColumn: () => false,
   modifiers: undefined,
@@ -167,7 +171,9 @@ function Kanban<T>({
 
   const findContainer = useCallback(
     (id: UniqueIdentifier) => {
-      if (isColumn(id)) return id as string;
+      if (isColumn(id)) {
+        return id as string;
+      }
       return columnIds.find((key) =>
         columns[key].some((item) => getItemValue(item) === id)
       );
@@ -186,9 +192,13 @@ function Kanban<T>({
       }
 
       const { active, over } = event;
-      if (!over) return;
+      if (!over) {
+        return;
+      }
 
-      if (isColumn(active.id)) return;
+      if (isColumn(active.id)) {
+        return;
+      }
 
       const activeContainer = findContainer(active.id);
       const overContainer = findContainer(over.id);
@@ -252,7 +262,9 @@ function Kanban<T>({
       const { active, over } = event;
       setActiveId(null);
 
-      if (!over) return;
+      if (!over) {
+        return;
+      }
 
       // Handle item move callback
       if (onMove && !isColumn(active.id)) {
@@ -291,9 +303,9 @@ function Kanban<T>({
             overIndex
           );
           const newColumns: Record<string, T[]> = {};
-          newOrder.forEach((key) => {
+          for (const key of newOrder) {
             newColumns[key] = columns[key];
-          });
+          }
           setColumns(newColumns);
         }
         return;
@@ -714,7 +726,9 @@ function KanbanOverlay({ children, className, ...props }: KanbanOverlayProps) {
         : children
       : null;
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return null;
+  }
 
   return createPortal(
     <DragOverlay

@@ -59,8 +59,8 @@ function AutoFixNotes({ notes }: { notes: string[] }) {
         Spec auto-corrections applied
       </div>
       <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {notes.map((note, idx) => (
-          <li key={`${idx}:${note}`}>{note}</li>
+        {notes.map((note) => (
+          <li key={note}>{note}</li>
         ))}
       </ul>
     </div>
@@ -78,8 +78,8 @@ function SpecIssues({ issues }: { issues: SpecIssue[] }) {
         Spec validation issues
       </div>
       <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {issues.map((issue, idx) => (
-          <li key={`${idx}:${issue.code}:${issue.elementKey ?? ""}`}>
+        {issues.map((issue) => (
+          <li key={`${issue.code}:${issue.elementKey ?? ""}`}>
             <span className="font-medium">[{issue.severity}]</span>{" "}
             {issue.message}
           </li>
@@ -170,10 +170,7 @@ export function GenUICanvas({
                 )}
                 {issues.length > 0 && <SpecIssues issues={issues} />}
                 {blockingErrors.length === 0 && (
-                  <JSONUIProvider
-                    initialState={spec.state}
-                    registry={registry}
-                  >
+                  <JSONUIProvider initialState={spec.state} registry={registry}>
                     <Renderer
                       loading={isLoading}
                       registry={registry}

@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { ReactElement } from "react"
-import { getColumnHeaderLabel } from "@/components/reui/data-grid/data-grid"
-import { Table } from "@tanstack/react-table"
+import type { Table } from "@tanstack/react-table";
+import type { ReactElement } from "react";
+import { getColumnHeaderLabel } from "@/components/reui/data-grid/data-grid";
 
 import {
   DropdownMenu,
@@ -11,14 +11,14 @@ import {
   DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 function DataGridColumnVisibility<TData>({
   table,
   trigger,
 }: {
-  table: Table<TData>
-  trigger: ReactElement<Record<string, unknown>>
+  table: Table<TData>;
+  trigger: ReactElement<Record<string, unknown>>;
 }) {
   return (
     <DropdownMenu>
@@ -34,20 +34,20 @@ function DataGridColumnVisibility<TData>({
             .map((column) => {
               return (
                 <DropdownMenuCheckboxItem
-                  key={column.id}
-                  className="capitalize"
                   checked={column.getIsVisible()}
-                  onSelect={(event) => event.preventDefault()}
+                  className="capitalize"
+                  key={column.id}
                   onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  onSelect={(event) => event.preventDefault()}
                 >
                   {getColumnHeaderLabel(column)}
                 </DropdownMenuCheckboxItem>
-              )
+              );
             })}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
 
-export { DataGridColumnVisibility }
+export { DataGridColumnVisibility };

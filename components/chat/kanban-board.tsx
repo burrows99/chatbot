@@ -41,11 +41,7 @@ const DEFAULT_COLUMNS: BoardColumn[] = [
   { id: "done", title: "Done" },
 ];
 
-export function KanbanBoard({
-  columns,
-  items,
-  title,
-}: KanbanBoardProps) {
+export function KanbanBoard({ columns, items, title }: KanbanBoardProps) {
   const cols = columns && columns.length > 0 ? columns : DEFAULT_COLUMNS;
 
   const derived = useMemo(() => {
