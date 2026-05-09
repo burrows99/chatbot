@@ -6,6 +6,7 @@ import {
   type SpecIssue,
   validateSpec,
 } from "@json-render/core";
+import { JsonRenderDevtools } from "@json-render/devtools-react";
 import {
   type DataPart,
   JSONUIProvider,
@@ -15,18 +16,17 @@ import {
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangleIcon,
-  CodeIcon,
   InfoIcon,
   PanelRightIcon,
   SparklesIcon,
   XIcon,
 } from "lucide-react";
 import { useMemo } from "react";
+import { catalog } from "@/lib/gen-ui/catalog";
 import { registry } from "@/lib/gen-ui/registry";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 function EmptyState({
   icon: Icon,
@@ -144,70 +144,39 @@ export function GenUICanvas({
       </div>
 
       {lastAssistantMessage ? (
-        <Tabs className="flex min-h-0 flex-1 flex-col" defaultValue="rendered">
-          <div className="flex shrink-0 items-center border-b border-border/40 px-4 py-2">
-            <TabsList>
-              <TabsTrigger data-testid="gen-ui-tab-rendered" value="rendered">
-                <SparklesIcon className="mr-1.5 size-3" />
-                Rendered
-              </TabsTrigger>
-              <TabsTrigger data-testid="gen-ui-tab-json" value="json">
-                <CodeIcon className="mr-1.5 size-3" />
-                Raw JSON
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent
-            className="min-h-0 flex-1 overflow-y-auto p-4"
-            data-testid="gen-ui-canvas-content"
-            value="rendered"
-          >
-            {spec ? (
-              <>
-                {autoFixNotes.length > 0 && (
-                  <AutoFixNotes notes={autoFixNotes} />
-                )}
-                {issues.length > 0 && <SpecIssues issues={issues} />}
-                {blockingErrors.length === 0 && (
-                  <JSONUIProvider initialState={spec.state} registry={registry}>
-                    <Renderer
-                      loading={isLoading}
-                      registry={registry}
-                      spec={spec}
-                    />
-                  </JSONUIProvider>
-                )}
-              </>
-            ) : (
-              <EmptyState
-                icon={SparklesIcon}
-                message="The model didn't emit a UI spec for this turn."
-                testId="gen-ui-no-spec"
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent
-            className="min-h-0 flex-1 overflow-y-auto p-4"
-            value="json"
-          >
-            {spec ? (
-              <pre
-                className="overflow-auto rounded-md border border-border/40 bg-muted/30 p-3 font-mono text-[11px] leading-relaxed"
-                data-testid="gen-ui-json"
-              >
-                {JSON.stringify(spec, null, 2)}
-              </pre>
-            ) : (
-              <EmptyState
-                icon={CodeIcon}
-                message="No spec emitted for this turn."
-                testId="gen-ui-no-json"
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto p-4"
+          data-testid="gen-ui-canvas-content"
+        >
+          {spec ? (
+            <>
+              {autoFixNotes.length > 0 && (
+                <AutoFixNotes notes={autoFixNotes} />
+              )}
+              {issues.length > 0 && <SpecIssues issues={issues} />}
+              {blockingErrors.length === 0 && (
+                <JSONUIProvider initialState={spec.state} registry={registry}>
+                  <Renderer
+                    loading={isLoading}
+                    registry={registry}
+                    spec={spec}
+                  />
+                  <JsonRenderDevtools
+                    catalog={catalog}
+                    messages={messages}
+                    spec={spec}
+                  />
+                </JSONUIProvider>
+              )}
+            </>
+          ) : (
+            <EmptyState
+              icon={SparklesIcon}
+              message="The model didn't emit a UI spec for this turn."
+              testId="gen-ui-no-spec"
+            />
+          )}
+        </div>
       ) : (
         <div
           className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"

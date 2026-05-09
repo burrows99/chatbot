@@ -12,8 +12,8 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData extends RowData, _TValue> {
+  // biome-ignore lint/correctness/noUnusedVariables: type parameter name must match base declaration for merging
+  interface ColumnMeta<TData extends RowData, TValue> {
     headerTitle?: string;
     headerClassName?: string;
     cellClassName?: string;
