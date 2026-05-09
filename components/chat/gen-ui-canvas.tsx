@@ -49,6 +49,7 @@ function EmptyState({
 }
 
 function AutoFixNotes({ notes }: { notes: string[] }) {
+  const uniqueNotes = Array.from(new Set(notes));
   return (
     <div
       className="mb-3 rounded-md border border-blue-500/40 bg-blue-500/5 p-3 text-blue-700 dark:text-blue-400"
@@ -59,7 +60,7 @@ function AutoFixNotes({ notes }: { notes: string[] }) {
         Spec auto-corrections applied
       </div>
       <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {notes.map((note) => (
+        {uniqueNotes.map((note) => (
           <li key={note}>{note}</li>
         ))}
       </ul>
@@ -78,8 +79,10 @@ function SpecIssues({ issues }: { issues: SpecIssue[] }) {
         Spec validation issues
       </div>
       <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {issues.map((issue) => (
-          <li key={`${issue.code}:${issue.elementKey ?? ""}`}>
+        {issues.map((issue, i) => (
+          <li
+            key={`${issue.code}:${issue.elementKey ?? ""}:${issue.message}:${i}`}
+          >
             <span className="font-medium">[{issue.severity}]</span>{" "}
             {issue.message}
           </li>
@@ -150,9 +153,7 @@ export function GenUICanvas({
         >
           {spec ? (
             <>
-              {autoFixNotes.length > 0 && (
-                <AutoFixNotes notes={autoFixNotes} />
-              )}
+              {autoFixNotes.length > 0 && <AutoFixNotes notes={autoFixNotes} />}
               {issues.length > 0 && <SpecIssues issues={issues} />}
               {blockingErrors.length === 0 && (
                 <JSONUIProvider initialState={spec.state} registry={registry}>
