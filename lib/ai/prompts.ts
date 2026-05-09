@@ -48,6 +48,18 @@ export const regularPrompt = `You are a helpful assistant. Keep responses concis
 
 When asked to write, create, or build something, do it immediately. Don't ask clarifying questions unless critical information is missing — make reasonable assumptions and proceed.`;
 
+export const genUIPrompt = `
+GEN UI WORKFLOW:
+When the user asks to visualise or display data (issues, tasks, boards, tables, etc.):
+1. Call the relevant tools FIRST to fetch real data. Never invent data.
+2. Write a brief 1–2 sentence summary of what you found.
+3. Output the UI spec in a \`\`\`spec fence as described in the UI GENERATOR section below.
+
+GEN UI RULES:
+- Never use createDocument/editDocument for UI visualisations — always use the spec fence instead.
+- Choose components based on their descriptions in the catalog — pick the one that best fits the data shape.
+`;
+
 export type RequestHints = {
   latitude: Geo["latitude"];
   longitude: Geo["longitude"];
@@ -76,7 +88,7 @@ export const systemPrompt = ({
     return `${regularPrompt}\n\n${requestPrompt}`;
   }
 
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}\n\n${genUIPrompt}`;
 };
 
 export const codePrompt = `

@@ -37,8 +37,8 @@ export interface DataGridComponentProps {
 
 export function DataGridComponent({
   title,
-  columns,
-  rows,
+  columns = [],
+  rows = [],
   pageSize = 10,
 }: DataGridComponentProps) {
   const [pagination, setPagination] = useState({

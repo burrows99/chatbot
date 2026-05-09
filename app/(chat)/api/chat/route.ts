@@ -24,11 +24,11 @@ import {
 import { isOllamaModelId, ollamaManager } from "@/lib/ai/ollama";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
-import { createDocument } from "@/lib/ai/tools/create-document";
-import { editDocument } from "@/lib/ai/tools/edit-document";
+// import { createDocument } from "@/lib/ai/tools/create-document";
+// import { editDocument } from "@/lib/ai/tools/edit-document";
 import { getWeather } from "@/lib/ai/tools/get-weather";
-import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
-import { updateDocument } from "@/lib/ai/tools/update-document";
+// import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
+// import { updateDocument } from "@/lib/ai/tools/update-document";
 import { isProductionEnvironment } from "@/lib/constants";
 import {
   createStreamId,
@@ -224,13 +224,6 @@ export async function POST(request: Request) {
 
 ${catalog.prompt({
   mode: "inline",
-  customRules: [
-    "If the user requests data from an external source (e.g. GitHub issues, tasks, pull requests), call the relevant tool first, then generate the UI spec using the real fetched data.",
-    "For KanbanBoard: it MUST always be the /root element. Never nest it inside Card or any other component. Set /root directly to the KanbanBoard element key.",
-    "Pass all fetched items directly as the KanbanBoard 'items' prop. Map each item's status to a column id: open->todo, in_progress->in_progress, closed->done.",
-    "CRITICAL: Every JSON patch must be on a single compact line with no newlines inside the value. Never format or pretty-print a patch across multiple lines.",
-    "Always include a 'title' prop on KanbanBoard summarizing what is shown.",
-  ],
 })}`,
           messages: modelMessages,
           stopWhen: stepCountIs(5),
@@ -255,22 +248,22 @@ ${catalog.prompt({
           },
           tools: {
             getWeather,
-            createDocument: createDocument({
-              session,
-              dataStream,
-              modelId: chatModel,
-            }),
-            editDocument: editDocument({ dataStream, session }),
-            updateDocument: updateDocument({
-              session,
-              dataStream,
-              modelId: chatModel,
-            }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-              modelId: chatModel,
-            }),
+            // createDocument: createDocument({
+            //   session,
+            //   dataStream,
+            //   modelId: chatModel,
+            // }),
+            // editDocument: editDocument({ dataStream, session }),
+            // updateDocument: updateDocument({
+            //   session,
+            //   dataStream,
+            //   modelId: chatModel,
+            // }),
+            // requestSuggestions: requestSuggestions({
+            //   session,
+            //   dataStream,
+            //   modelId: chatModel,
+            // }),
             ...mcp.tools,
           },
           experimental_telemetry: {

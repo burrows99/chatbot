@@ -37,7 +37,7 @@ export const catalog = defineCatalog(schema, {
         items: z.array(kanbanItemSchema).optional(),
       }),
       description:
-        "A draggable Kanban board with columns and cards. Each item has a `column` field matching a column `id`. Default columns: todo, in_progress, done. Designed to fill the full canvas — best used as the root element or as a tab pane inside Tabs.",
+        "A draggable Kanban board for task or issue tracking. Organises items into columns (e.g. todo / in_progress / done). Each item has a `column` field matching a column `id`. Use for boards, backlogs, sprint views, or any grouped-by-status data. Use as root or as a tab pane inside Tabs for multi-view layouts. Map issue state: open→todo, in_progress→in_progress, closed→done.",
       example: {
         title: "Tasks",
         columns: [
@@ -56,7 +56,7 @@ export const catalog = defineCatalog(schema, {
         pageSize: z.number().optional(),
       }),
       description:
-        "A sortable, paginated data table. 'columns' defines the headers (key, header, type, optional hrefKey/width/align). 'rows' is an array of plain objects matching the column keys. Use type 'link' with 'hrefKey' to render clickable URLs. Use type 'number' for numeric values. Designed to fill the full canvas — best used as the root element or as a tab pane inside Tabs.",
+        "A sortable, paginated data table. Use for lists, search results, or any tabular dataset. 'columns' defines headers — each 'key' must match a field in the row objects. Supported column types: text, number, date, badge, link (set hrefKey to the field containing the URL). Use as root or as a tab pane inside Tabs for multi-view layouts.",
       example: {
         title: "Issues",
         columns: [
