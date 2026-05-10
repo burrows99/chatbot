@@ -22,6 +22,7 @@ import {
   useArtifact,
   useArtifactSelector,
 } from "@/hooks/use-artifact";
+import { canvas } from "@/lib/gen-ui/canvas";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Artifact } from "./artifact";
@@ -73,6 +74,7 @@ export function ChatShell() {
       setArtifact(initialArtifactData);
       setEditingMessage(null);
       setAttachments([]);
+      canvas.store.clear();
     }
   }, [chatId, setArtifact]);
 
@@ -167,11 +169,7 @@ export function ChatShell() {
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize="80%" maxSize="90%" minSize="20%">
-              <GenUICanvas
-                isLoading={isLoading}
-                messages={messages}
-                onClose={() => setIsGenUICanvasVisible(false)}
-              />
+              <GenUICanvas onClose={() => setIsGenUICanvasVisible(false)} />
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (

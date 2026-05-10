@@ -1,30 +1,14 @@
 "use client";
 
 import {
-  autoFixSpec,
-  type Spec,
-  type SpecIssue,
-  validateSpec,
-} from "@json-render/core";
-import { JsonRenderDevtools } from "@json-render/devtools-react";
-import {
-  type DataPart,
-  JSONUIProvider,
-  Renderer,
-  useJsonRenderMessage,
-} from "@json-render/react";
-import type { LucideIcon } from "lucide-react";
-import {
   AlertTriangleIcon,
-  InfoIcon,
+  type LucideIcon,
   PanelRightIcon,
   SparklesIcon,
   XIcon,
 } from "lucide-react";
-import { useMemo } from "react";
-import { catalog } from "@/lib/gen-ui/catalog";
-import { registry } from "@/lib/gen-ui/registry";
-import type { ChatMessage } from "@/lib/types";
+import { type CanvasRenderResult, canvas } from "@/lib/gen-ui/canvas";
+import { useCanvasState } from "@/lib/gen-ui/canvas/use-canvas-state";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 
@@ -48,83 +32,41 @@ function EmptyState({
   );
 }
 
-function AutoFixNotes({ notes }: { notes: string[] }) {
-  const uniqueNotes = Array.from(new Set(notes));
+function ErrorChip({ message }: { message: string }) {
   return (
     <div
-      className="mb-3 rounded-md border border-blue-500/40 bg-blue-500/5 p-3 text-blue-700 dark:text-blue-400"
-      data-testid="gen-ui-autofix-notes"
+      className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-amber-700 text-xs dark:text-amber-400"
+      data-testid="gen-ui-canvas-error"
     >
-      <div className="flex items-center gap-2 font-medium text-xs">
-        <InfoIcon className="size-3.5" />
-        Spec auto-corrections applied
-      </div>
-      <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {uniqueNotes.map((note) => (
-          <li key={note}>{note}</li>
-        ))}
-      </ul>
+      <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+      <span>{message}</span>
     </div>
   );
 }
 
-function SpecIssues({ issues }: { issues: SpecIssue[] }) {
-  return (
-    <div
-      className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-amber-700 dark:text-amber-400"
-      data-testid="gen-ui-spec-issues"
-    >
-      <div className="flex items-center gap-2 font-medium text-xs">
-        <AlertTriangleIcon className="size-3.5" />
-        Spec validation issues
-      </div>
-      <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {issues.map((issue, i) => (
-          <li
-            key={`${issue.code}:${issue.elementKey ?? ""}:${issue.message}:${i}`}
-          >
-            <span className="font-medium">[{issue.severity}]</span>{" "}
-            {issue.message}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export function GenUICanvas({
-  onClose,
-  messages,
-  isLoading = false,
+function CanvasRender({
+  entry,
+  index,
 }: {
-  onClose: () => void;
-  messages: ChatMessage[];
-  isLoading?: boolean;
+  entry: CanvasRenderResult;
+  index: number;
 }) {
-  const lastAssistantMessage = [...messages]
-    .reverse()
-    .find((m) => m.role === "assistant");
+  if ("error" in entry) {
+    return <ErrorChip message={entry.error} />;
+  }
+  const Component = canvas.registry.getComponent(entry.component);
+  if (!Component) {
+    return (
+      <ErrorChip
+        message={`Unknown component "${entry.component}". Register it via registry.registerComponent(...) in an integration file.`}
+      />
+    );
+  }
+  return <Component key={`${entry.component}-${index}`} {...entry.props} />;
+}
 
-  const parts = (lastAssistantMessage?.parts ?? []) as DataPart[];
-  const { spec: rawSpec, hasSpec } = useJsonRenderMessage(parts);
-
-  const { spec, issues, autoFixNotes } = useMemo<{
-    spec: Spec | null;
-    issues: SpecIssue[];
-    autoFixNotes: string[];
-  }>(() => {
-    if (!(hasSpec && rawSpec)) {
-      return { spec: null, issues: [], autoFixNotes: [] };
-    }
-    const { spec: fixed, fixes } = autoFixSpec(rawSpec);
-    if (isLoading) {
-      return { spec: fixed, issues: [], autoFixNotes: fixes };
-    }
-    const result = validateSpec(fixed, { checkOrphans: true });
-    return { spec: fixed, issues: result.issues, autoFixNotes: fixes };
-  }, [rawSpec, hasSpec, isLoading]);
-
-  const blockingErrors = issues.filter((i) => i.severity === "error");
+export function GenUICanvas({ onClose }: { onClose: () => void }) {
+  const { components, toolCallId } = useCanvasState();
 
   return (
     <div className="flex h-full flex-col" data-testid="gen-ui-canvas">
@@ -146,34 +88,29 @@ export function GenUICanvas({
         </Button>
       </div>
 
-      {lastAssistantMessage ? (
+      {toolCallId ? (
         <div
           className="min-h-0 flex-1 overflow-y-auto p-4"
           data-testid="gen-ui-canvas-content"
         >
-          {spec ? (
-            <>
-              {autoFixNotes.length > 0 && <AutoFixNotes notes={autoFixNotes} />}
-              {issues.length > 0 && <SpecIssues issues={issues} />}
-              {blockingErrors.length === 0 && (
-                <JSONUIProvider initialState={spec.state} registry={registry}>
-                  <Renderer
-                    loading={isLoading}
-                    registry={registry}
-                    spec={spec}
-                  />
-                  <JsonRenderDevtools
-                    catalog={catalog}
-                    messages={messages}
-                    spec={spec}
-                  />
-                </JSONUIProvider>
-              )}
-            </>
+          {components.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {components.map((entry, index) => (
+                <CanvasRender
+                  entry={entry}
+                  index={index}
+                  key={
+                    "error" in entry
+                      ? `error-${index}`
+                      : `${entry.component}-${index}`
+                  }
+                />
+              ))}
+            </div>
           ) : (
             <EmptyState
               icon={SparklesIcon}
-              message="The model didn't emit a UI spec for this turn."
+              message="The model didn't render any UI for this turn."
               testId="gen-ui-no-spec"
             />
           )}

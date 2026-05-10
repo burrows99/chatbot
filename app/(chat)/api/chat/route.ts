@@ -1,4 +1,3 @@
-import { pipeJsonRender } from "@json-render/core";
 import { geolocation, ipAddress } from "@vercel/functions";
 import {
   convertToModelMessages,
@@ -26,6 +25,7 @@ import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 // import { createDocument } from "@/lib/ai/tools/create-document";
 // import { editDocument } from "@/lib/ai/tools/edit-document";
+import { makeCanvasTool } from "@/lib/ai/tools/canvas";
 import { draftEmail } from "@/lib/ai/tools/draft-email";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 // import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -44,7 +44,6 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
-import { catalog } from "@/lib/gen-ui/catalog";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import { redis } from "@/lib/storage/redis";
 import type { ChatMessage } from "@/lib/types";
@@ -219,27 +218,20 @@ export async function POST(request: Request) {
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
-        const baseSystem = systemPrompt({ requestHints });
-        const finalSystem = supportsTools
-          ? catalog.prompt({
-              mode: "inline",
-              system: baseSystem,
-              customRules: [
-                'ROOT COHERENCE: The value of `/root` MUST equal the key of one of your `/elements/<key>` patches. After emitting all patches, self-check: does `elements[root]` exist? If you set `root` to a semantic name (e.g. \'dashboard\'), you must also emit `{"op":"add","path":"/elements/dashboard","value":{...}}` as your top-level container.',
-                'STATE ARRAY UNIQUENESS: Each item in a state array (e.g. `/state/tasks`, `/state/rows`, `/state/items`) MUST appear exactly once. Choose ONE emission strategy per array: either a single bulk `{"op":"add","path":"/state/<key>","value":[...]}` with the complete array, OR per-item `{"op":"add","path":"/state/<key>/-","value":{...}}` patches — never both. Never re-emit items already in the array.',
-              ],
-            })
-          : baseSystem;
-
         const result = streamText({
           model: getLanguageModel(chatModel),
-          system: finalSystem,
+          system: systemPrompt({ requestHints }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
             isReasoningModel && !supportsTools
               ? []
-              : (["getWeather", "draftEmail", ...mcpToolNames] as never),
+              : ([
+                  "getWeather",
+                  "draftEmail",
+                  ...mcpToolNames,
+                  "canvas",
+                ] as never),
           providerOptions: {
             ...(modelConfig?.gatewayOrder && {
               gateway: { order: modelConfig.gatewayOrder },
@@ -256,6 +248,7 @@ export async function POST(request: Request) {
             getWeather,
             draftEmail,
             ...mcp.tools,
+            canvas: makeCanvasTool(dataStream, mcpToolNames),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
@@ -267,9 +260,7 @@ export async function POST(request: Request) {
         });
 
         dataStream.merge(
-          pipeJsonRender(
-            result.toUIMessageStream({ sendReasoning: isReasoningModel })
-          )
+          result.toUIMessageStream({ sendReasoning: isReasoningModel })
         );
 
         if (titlePromise) {

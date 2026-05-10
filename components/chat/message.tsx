@@ -298,6 +298,52 @@ const PurePreviewMessage = ({
       );
     }
 
+    if (type === "tool-canvas") {
+      const canvasPart = part as {
+        toolCallId: string;
+        state:
+          | "input-streaming"
+          | "input-available"
+          | "output-available"
+          | "output-error";
+        input?: unknown;
+        output?: { components?: unknown[] };
+        errorText?: string;
+      };
+      const componentCount = Array.isArray(canvasPart.output?.components)
+        ? canvasPart.output.components.length
+        : 0;
+      return (
+        <Tool
+          className="w-full"
+          defaultOpen={false}
+          key={canvasPart.toolCallId}
+        >
+          <ToolHeader state={canvasPart.state} type="tool-canvas" />
+          <ToolContent>
+            {canvasPart.input !== undefined && (
+              <ToolInput input={canvasPart.input} />
+            )}
+            {canvasPart.state === "output-available" && (
+              <ToolOutput
+                errorText={canvasPart.errorText}
+                output={
+                  <div className="px-4 py-3 text-muted-foreground text-xs">
+                    Rendered {componentCount}{" "}
+                    {componentCount === 1 ? "component" : "components"} in the
+                    Generated UI panel.
+                  </div>
+                }
+              />
+            )}
+            {canvasPart.state === "output-error" && canvasPart.errorText && (
+              <ToolOutput errorText={canvasPart.errorText} output={null} />
+            )}
+          </ToolContent>
+        </Tool>
+      );
+    }
+
     // MCP / dynamic tools (type === "dynamic-tool")
     if (type === "dynamic-tool") {
       const dynPart = part as {
