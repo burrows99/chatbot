@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { initialArtifactData, useArtifact } from "@/hooks/use-artifact";
-import { canvas } from "@/lib/gen-ui/canvas";
 import { artifactDefinitions } from "./artifact";
 import { useDataStream } from "./data-stream-provider";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
@@ -26,10 +25,6 @@ export function DataStreamHandler() {
     for (const delta of newDeltas) {
       if (delta.type === "data-chat-title") {
         mutate(unstable_serialize(getChatHistoryPaginationKey));
-        continue;
-      }
-      if (delta.type === "data-canvas") {
-        canvas.store.setFromPart(delta.data.toolCallId, delta.data.components);
         continue;
       }
       const artifactDefinition = artifactDefinitions.find(

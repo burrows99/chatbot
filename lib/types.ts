@@ -1,7 +1,6 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
 import type { ArtifactKind } from "@/components/chat/artifact";
-import type { makeCanvasTool } from "./ai/tools/canvas";
 import type { createDocument } from "./ai/tools/create-document";
 import type { getWeather } from "./ai/tools/get-weather";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
@@ -20,11 +19,9 @@ type updateDocumentTool = InferUITool<ReturnType<typeof updateDocument>>;
 type requestSuggestionsTool = InferUITool<
   ReturnType<typeof requestSuggestions>
 >;
-type canvasTool = InferUITool<ReturnType<typeof makeCanvasTool>>;
 
 export type ChatTools = {
   getWeather: weatherTool;
-  canvas: canvasTool;
   createDocument: createDocumentTool;
   updateDocument: updateDocumentTool;
   requestSuggestions: requestSuggestionsTool;
@@ -43,12 +40,6 @@ export type CustomUIDataTypes = {
   clear: null;
   finish: null;
   "chat-title": string;
-  canvas: {
-    toolCallId: string;
-    components: Array<
-      { component: string; props: Record<string, unknown> } | { error: string }
-    >;
-  };
 };
 
 export type ChatMessage = UIMessage<
