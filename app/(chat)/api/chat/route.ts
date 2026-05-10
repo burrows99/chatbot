@@ -26,7 +26,6 @@ import { getLanguageModel } from "@/lib/ai/providers";
 // import { createDocument } from "@/lib/ai/tools/create-document";
 // import { editDocument } from "@/lib/ai/tools/edit-document";
 import { makeCanvasTool } from "@/lib/ai/tools/canvas";
-import { draftEmail } from "@/lib/ai/tools/draft-email";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 // import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 // import { updateDocument } from "@/lib/ai/tools/update-document";
@@ -226,12 +225,7 @@ export async function POST(request: Request) {
           experimental_activeTools:
             isReasoningModel && !supportsTools
               ? []
-              : ([
-                  "getWeather",
-                  "draftEmail",
-                  ...mcpToolNames,
-                  "canvas",
-                ] as never),
+              : (["getWeather", ...mcpToolNames, "canvas"] as never),
           providerOptions: {
             ...(modelConfig?.gatewayOrder && {
               gateway: { order: modelConfig.gatewayOrder },
@@ -246,7 +240,6 @@ export async function POST(request: Request) {
           },
           tools: {
             getWeather,
-            draftEmail,
             ...mcp.tools,
             canvas: makeCanvasTool(dataStream, mcpToolNames),
           },
