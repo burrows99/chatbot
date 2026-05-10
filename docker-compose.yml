@@ -68,6 +68,7 @@ services:
 
   mcp-planner:
     image: ghcr.io/aixolotl/microsoft-planner-mcp:latest
+    platform: linux/amd64
     restart: unless-stopped
     container_name: mcp-planner
     ports:
