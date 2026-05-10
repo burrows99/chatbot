@@ -1,11 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import {
-  ExternalLinkIcon,
-  MessageSquareIcon,
-  SmileIcon,
-} from "lucide-react";
+import { ExternalLinkIcon, MessageSquareIcon, SmileIcon } from "lucide-react";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import { useEffect, useId, useState } from "react";
@@ -65,6 +61,7 @@ export interface IKanbanColumn {
 
 export interface KanbanBoardComponentProps {
   columns: IKanbanColumn[];
+  onCardMove?: (cardId: string, toColumnId: string) => void;
 }
 
 type DragPayload = { id: string };
@@ -76,6 +73,13 @@ function parseDragPayload(raw: string): string | null {
   } catch {
     return null;
   }
+}
+
+function findColumnIdOfCard(
+  columns: IKanbanColumn[],
+  cardId: string
+): string | undefined {
+  return columns.find((c) => c.cards.some((card) => card.id === cardId))?.id;
 }
 
 function moveCardInColumns(
@@ -174,7 +178,7 @@ function KanbanCardBody({ card }: { card: IKanbanCard }) {
             <div className="mt-0.5 truncate text-muted-foreground text-xs">
               {card.repoSlug ?? ""}
               {card.repoSlug && card.number !== undefined ? " " : ""}
-              {card.number !== undefined ? `#${card.number}` : ""}
+              {card.number === undefined ? "" : `#${card.number}`}
             </div>
           )}
         </div>
@@ -257,6 +261,7 @@ function KanbanCardBody({ card }: { card: IKanbanCard }) {
 
 export function KanbanBoardComponent({
   columns: propsColumns,
+  onCardMove,
 }: KanbanBoardComponentProps) {
   const hiddenTextDescribedById = useId();
   const [columns, setColumns] = useState<IKanbanColumn[]>(propsColumns);
@@ -278,7 +283,11 @@ export function KanbanBoardComponent({
             onDropOverColumn={(raw) => {
               const cardId = parseDragPayload(raw);
               if (cardId) {
+                const sourceColumnId = findColumnIdOfCard(columns, cardId);
                 setColumns((prev) => moveCardInColumns(prev, cardId, col.id));
+                if (sourceColumnId && sourceColumnId !== col.id) {
+                  onCardMove?.(cardId, col.id);
+                }
               }
             }}
           >
@@ -303,6 +312,10 @@ export function KanbanBoardComponent({
                       cardId !== card.id &&
                       (direction === "top" || direction === "bottom")
                     ) {
+                      const sourceColumnId = findColumnIdOfCard(
+                        columns,
+                        cardId
+                      );
                       setColumns((prev) =>
                         moveCardInColumns(
                           prev,
@@ -312,6 +325,9 @@ export function KanbanBoardComponent({
                           direction
                         )
                       );
+                      if (sourceColumnId && sourceColumnId !== col.id) {
+                        onCardMove?.(cardId, col.id);
+                      }
                     }
                   }}
                 >

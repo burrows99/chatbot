@@ -62,6 +62,7 @@ export interface GanttChartComponentProps {
   markers?: IGanttMarker[];
   range?: "daily" | "monthly" | "quarterly";
   zoom?: number;
+  onFeatureMove?: (featureId: string, startAt: string, endAt: string) => void;
 }
 
 type NormalizedGanttFeature = Omit<IGanttFeature, "startAt" | "endAt"> & {
@@ -96,6 +97,7 @@ export function GanttChartComponent({
   markers: propsMarkers = [],
   range = "monthly",
   zoom = 100,
+  onFeatureMove,
 }: GanttChartComponentProps) {
   const [features, setFeatures] = useState<IGanttFeature[]>(propsFeatures);
 
@@ -142,21 +144,16 @@ export function GanttChartComponent({
     }
   };
 
-  const handleMoveFeature = (
-    id: string,
-    startAt: Date,
-    endAt: Date | null
-  ) => {
+  const handleMoveFeature = (id: string, startAt: Date, endAt: Date | null) => {
     if (!endAt) {
       return;
     }
     setFeatures((prev) =>
       prev.map((feature) =>
-        feature.id === id
-          ? { ...feature, startAt, endAt }
-          : feature
+        feature.id === id ? { ...feature, startAt, endAt } : feature
       )
     );
+    onFeatureMove?.(id, startAt.toISOString(), endAt.toISOString());
   };
 
   return (

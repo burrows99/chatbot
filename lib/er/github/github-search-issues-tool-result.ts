@@ -2,9 +2,7 @@ import type {
   DataGridComponentProps,
   IData,
 } from "@/components/chat/data-grid";
-import type {
-  GanttChartComponentProps,
-} from "@/components/chat/gantt-chart";
+import type { GanttChartComponentProps } from "@/components/chat/gantt-chart";
 import type {
   IKanbanColumn,
   KanbanBoardComponentProps,
@@ -30,6 +28,10 @@ export class GitHubSearchIssuesToolResult extends CanvasEntity {
     return this.items.map((item) => item.iData);
   }
 
+  private findIssue(idString: string): GhIssue | undefined {
+    return this.items.find((issue) => String(issue.id) === idString);
+  }
+
   get dataGridProps(): DataGridComponentProps {
     return { data: this.iDataList };
   }
@@ -51,10 +53,36 @@ export class GitHubSearchIssuesToolResult extends CanvasEntity {
       const target = issue.state === "open" ? open : closed;
       target.cards.push(issue.kanbanCard);
     }
-    return { columns: [open, closed] };
+    const onCardMove = (cardId: string, toColumnId: string) => {
+      const issue = this.findIssue(cardId);
+      if (!issue || (toColumnId !== "open" && toColumnId !== "closed")) {
+        return;
+      }
+      issue.state = toColumnId;
+      issue.save();
+    };
+    return { columns: [open, closed], onCardMove };
   }
 
   get ganttChartProps(): GanttChartComponentProps {
-    return { features: this.items.map((issue) => issue.ganttFeature) };
+    const onFeatureMove = (
+      featureId: string,
+      startAt: string,
+      endAt: string
+    ) => {
+      const issue = this.findIssue(featureId);
+      if (!issue) {
+        return;
+      }
+      issue.created_at = startAt;
+      if (issue.state === "closed") {
+        issue.closed_at = endAt;
+      }
+      issue.save();
+    };
+    return {
+      features: this.items.map((issue) => issue.ganttFeature),
+      onFeatureMove,
+    };
   }
 }

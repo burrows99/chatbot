@@ -89,11 +89,7 @@ export function GenUICanvas({
     if (output == null) {
       return null;
     }
-    return genUIRegistry.render(
-      request.sourceToolName,
-      output,
-      request.views
-    );
+    return genUIRegistry.render(request.sourceToolName, output, request.views);
   }, [messages]);
 
   return (

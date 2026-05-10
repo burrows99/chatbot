@@ -31,6 +31,9 @@ export class GhIssue extends CanvasEntity {
   repository_url = "";
   reactions: GhReactions = new GhReactions();
   node_id = "";
+  save(): void {
+    console.log("[GhIssue.save]", this);
+  }
 
   get iData(): IData {
     const open = this.state === "open";
@@ -97,7 +100,11 @@ export class GhIssue extends CanvasEntity {
       status,
       group: repoSlug,
       owner: this.user?.login
-        ? { id: this.user.login, name: this.user.login, image: this.user.avatar_url }
+        ? {
+            id: this.user.login,
+            name: this.user.login,
+            image: this.user.avatar_url,
+          }
         : undefined,
       url: this.html_url,
     };

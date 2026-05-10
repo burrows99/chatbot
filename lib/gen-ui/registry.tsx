@@ -71,15 +71,17 @@ export class GenUIRegistry {
   }
 }
 
-export const genUIRegistry = new GenUIRegistry().register<GitHubSearchIssuesToolResult>(
-  {
+export const genUIRegistry =
+  new GenUIRegistry().register<GitHubSearchIssuesToolResult>({
     matches: (toolName) => toolName.endsWith("search_issues"),
     build: (output) =>
-      CanvasEntity.fromRaw(GitHubSearchIssuesToolResult, unwrapMcpOutput(output)),
+      CanvasEntity.fromRaw(
+        GitHubSearchIssuesToolResult,
+        unwrapMcpOutput(output)
+      ),
     views: {
       grid: (entity) => <DataGridComponent {...entity.dataGridProps} />,
       kanban: (entity) => <KanbanBoardComponent {...entity.kanbanBoardProps} />,
       gantt: (entity) => <GanttChartComponent {...entity.ganttChartProps} />,
     },
-  }
-);
+  });
