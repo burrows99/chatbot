@@ -1,6 +1,7 @@
 import type { IData } from "@/components/chat/data-grid";
 import type { IKanbanCard } from "@/components/chat/kanban-board";
 import { CanvasEntity } from "../canvas-entity";
+import type { GhLabel } from "./gh-label";
 import { GhReactions } from "./gh-reactions";
 import { GhUser } from "./gh-user";
 
@@ -8,6 +9,7 @@ export class GhIssue extends CanvasEntity {
   id = 0;
   number = 0;
   state = "";
+  state_reason = "";
   locked = false;
   title = "";
   body = "";
@@ -15,9 +17,11 @@ export class GhIssue extends CanvasEntity {
   user: GhUser = new GhUser();
   assignee: GhUser = new GhUser();
   assignees: GhUser[] = [];
+  labels: GhLabel[] = [];
   comments = 0;
   created_at = "";
   updated_at = "";
+  closed_at = "";
   url = "";
   html_url = "";
   comments_url = "";
@@ -47,23 +51,32 @@ export class GhIssue extends CanvasEntity {
   }
 
   get kanbanCard(): IKanbanCard {
-    const commentsLabel =
-      this.comments > 0
-        ? `${this.comments} comment${this.comments === 1 ? "" : "s"}`
-        : null;
-    const description = [
-      this.user?.login,
-      this.author_association,
-      commentsLabel,
-    ]
-      .filter(Boolean)
-      .join(" · ");
+    const repoSlug = this.repository_url
+      ? this.repository_url.replace(/^.*\/repos\//, "")
+      : undefined;
+    const reactionsCount = this.reactions?.total_count ?? 0;
     return {
       id: String(this.id),
       title: this.title || this.user?.login || "",
-      description,
       avatar: this.user?.avatar_url,
       url: this.html_url,
+      number: this.number,
+      repoSlug,
+      authorLogin: this.user?.login,
+      authorAssociation: this.author_association,
+      createdAt: this.created_at,
+      closedAt: this.closed_at,
+      commentsCount: this.comments,
+      reactionsCount,
+      labels: (this.labels ?? []).map((label) => ({
+        name: label.name,
+        color: label.color,
+      })),
+      assignees: (this.assignees ?? []).map((assignee) => ({
+        login: assignee.login,
+        avatar: assignee.avatar_url,
+      })),
+      stateReason: this.state_reason || undefined,
     };
   }
 }
