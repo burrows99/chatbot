@@ -9,11 +9,13 @@ type CanvasRenderProps = {
 export const canvasRender = ({ dataStream }: CanvasRenderProps) =>
   tool({
     description:
-      "Render a prior tool's result on the Generated UI canvas (the side panel) " +
-      "as a rich UI (e.g., a data grid for GitHub issues). " +
-      "Call this AFTER a data-returning tool like 'github__search_issues' when the " +
-      "user would benefit from a visual view of the data. The canvas reads the " +
-      "referenced tool's most recent output from the chat history.",
+      "Render a prior tool's result on the Generated UI canvas (the side panel). " +
+      "Pick one or more views to stack on the canvas: 'grid' for a sortable, " +
+      "paginated data table (good for many rows with comparable fields); " +
+      "'kanban' for a column board grouped by status (good for issue/task " +
+      "workflows). Pass both when the user would benefit from seeing each view " +
+      "of the same data. " +
+      "Call this AFTER a data-returning tool like 'github__search_issues'.",
     inputSchema: z.object({
       sourceToolName: z
         .string()
@@ -21,12 +23,28 @@ export const canvasRender = ({ dataStream }: CanvasRenderProps) =>
           "Name of the tool whose most recent output to render on the canvas " +
             "(e.g., 'github__search_issues')."
         ),
+      views: z
+        .array(z.enum(["grid", "kanban"]))
+        .min(1)
+        .default(["grid"])
+        .describe(
+          "Ordered list of visualizations to render on the canvas. " +
+            "Each view renders the same source output. Duplicates are deduplicated."
+        ),
     }),
     execute: (input) => {
+      const views = Array.from(new Set(input.views));
       dataStream.write({
         type: "data-canvas-render",
-        data: { sourceToolName: input.sourceToolName },
+        data: {
+          sourceToolName: input.sourceToolName,
+          views,
+        },
       });
-      return { ok: true, sourceToolName: input.sourceToolName };
+      return {
+        ok: true,
+        sourceToolName: input.sourceToolName,
+        views,
+      };
     },
   });

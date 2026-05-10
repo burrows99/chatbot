@@ -43,7 +43,10 @@ export type CustomUIDataTypes = {
   clear: null;
   finish: null;
   "chat-title": string;
-  "canvas-render": { sourceToolName: string };
+  "canvas-render": {
+    sourceToolName: string;
+    views?: ("grid" | "kanban")[];
+  };
 };
 
 export type ChatMessage = UIMessage<

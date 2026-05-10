@@ -9,6 +9,9 @@ import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { DataGridComponent } from "./data-grid";
+import { KanbanBoardComponent } from "./kanban-board";
+
+type CanvasView = "grid" | "kanban";
 
 function unwrapMcpOutput(output: unknown): unknown {
   if (!output || typeof output !== "object") {
@@ -30,10 +33,17 @@ function unwrapMcpOutput(output: unknown): unknown {
 
 type CanvasRenderDataPart = {
   type: "data-canvas-render";
-  data: { sourceToolName: string };
+  data: { sourceToolName: string; views?: CanvasView[] };
 };
 
-function findLatestCanvasRenderData(messages: ChatMessage[]): string | null {
+type CanvasRenderRequest = {
+  sourceToolName: string;
+  views: CanvasView[];
+};
+
+function findLatestCanvasRenderData(
+  messages: ChatMessage[]
+): CanvasRenderRequest | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const parts = messages[i].parts ?? [];
     for (let j = parts.length - 1; j >= 0; j--) {
@@ -43,7 +53,16 @@ function findLatestCanvasRenderData(messages: ChatMessage[]): string | null {
       }
       const dataPart = part as unknown as CanvasRenderDataPart;
       if (typeof dataPart.data?.sourceToolName === "string") {
-        return dataPart.data.sourceToolName;
+        const requested = Array.isArray(dataPart.data.views)
+          ? dataPart.data.views
+          : [];
+        const views = Array.from(
+          new Set(requested.filter((v) => v === "grid" || v === "kanban"))
+        );
+        return {
+          sourceToolName: dataPart.data.sourceToolName,
+          views: views.length > 0 ? views : ["grid"],
+        };
       }
     }
   }
@@ -73,15 +92,30 @@ function findSourceOutput(
   return null;
 }
 
-function renderSource(toolName: string, output: unknown) {
-  if (toolName.endsWith("search_issues")) {
-    const result = CanvasEntity.fromRaw(
-      GitHubSearchIssuesToolResult,
-      unwrapMcpOutput(output)
-    );
-    return <DataGridComponent {...result.dataGridProps} />;
+function renderSource(
+  toolName: string,
+  output: unknown,
+  views: CanvasView[]
+) {
+  if (!toolName.endsWith("search_issues")) {
+    return null;
   }
-  return null;
+  const result = CanvasEntity.fromRaw(
+    GitHubSearchIssuesToolResult,
+    unwrapMcpOutput(output)
+  );
+  return (
+    <div className="flex w-full flex-col gap-6">
+      {views.map((view) => {
+        if (view === "kanban") {
+          return (
+            <KanbanBoardComponent key={view} {...result.kanbanBoardProps} />
+          );
+        }
+        return <DataGridComponent key={view} {...result.dataGridProps} />;
+      })}
+    </div>
+  );
 }
 
 export function GenUICanvas({
@@ -92,15 +126,15 @@ export function GenUICanvas({
   onClose: () => void;
 }) {
   const rendered = useMemo(() => {
-    const sourceToolName = findLatestCanvasRenderData(messages);
-    if (!sourceToolName) {
+    const request = findLatestCanvasRenderData(messages);
+    if (!request) {
       return null;
     }
-    const output = findSourceOutput(messages, sourceToolName);
+    const output = findSourceOutput(messages, request.sourceToolName);
     if (output == null) {
       return null;
     }
-    return renderSource(sourceToolName, output);
+    return renderSource(request.sourceToolName, output, request.views);
   }, [messages]);
 
   return (

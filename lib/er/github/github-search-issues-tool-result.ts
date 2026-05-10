@@ -2,6 +2,10 @@ import type {
   DataGridComponentProps,
   IData,
 } from "@/components/chat/data-grid";
+import type {
+  IKanbanColumn,
+  KanbanBoardComponentProps,
+} from "@/components/chat/kanban-board";
 import { CanvasEntity } from "../canvas-entity";
 import { GhIssue } from "./gh-issue";
 
@@ -25,5 +29,25 @@ export class GitHubSearchIssuesToolResult extends CanvasEntity {
 
   get dataGridProps(): DataGridComponentProps {
     return { data: this.iDataList };
+  }
+
+  get kanbanBoardProps(): KanbanBoardComponentProps {
+    const open: IKanbanColumn = {
+      id: "open",
+      title: "Open",
+      color: "green",
+      cards: [],
+    };
+    const closed: IKanbanColumn = {
+      id: "closed",
+      title: "Closed",
+      color: "violet",
+      cards: [],
+    };
+    for (const issue of this.items) {
+      const target = issue.state === "open" ? open : closed;
+      target.cards.push(issue.kanbanCard);
+    }
+    return { columns: [open, closed] };
   }
 }

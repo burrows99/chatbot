@@ -1,4 +1,5 @@
 import type { IData } from "@/components/chat/data-grid";
+import type { IKanbanCard } from "@/components/chat/kanban-board";
 import { CanvasEntity } from "../canvas-entity";
 import { GhReactions } from "./gh-reactions";
 import { GhUser } from "./gh-user";
@@ -41,6 +42,27 @@ export class GhIssue extends CanvasEntity {
       joined: this.created_at,
       location: this.user?.login ?? "",
       balance: this.comments,
+      url: this.html_url,
+    };
+  }
+
+  get kanbanCard(): IKanbanCard {
+    const commentsLabel =
+      this.comments > 0
+        ? `${this.comments} comment${this.comments === 1 ? "" : "s"}`
+        : null;
+    const description = [
+      this.user?.login,
+      this.author_association,
+      commentsLabel,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return {
+      id: String(this.id),
+      title: this.title || this.user?.login || "",
+      description,
+      avatar: this.user?.avatar_url,
       url: this.html_url,
     };
   }
