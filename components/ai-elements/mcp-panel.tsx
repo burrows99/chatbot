@@ -51,6 +51,9 @@ function PureMCPPanelCompact() {
   const [connection, setConnection] = useState<Record<string, ConnectionStatus>>(
     {}
   );
+  const [toolsByServer, setToolsByServer] = useState<
+    Record<string, { name: string; description?: string }[]>
+  >({});
 
   useEffect(() => {
     setMounted(true);
@@ -85,13 +88,14 @@ function PureMCPPanelCompact() {
     }
   }, [open, storedText]);
 
-  // Default every configured server to "connected" so the UI starts in a
-  // sensible state. Servers removed from config drop their state too.
+  // Default every configured server to "connecting" until its first probe
+  // completes — showing a definite "connected" before we've verified is
+  // misleading (some servers handshake OK but expose nothing).
   useEffect(() => {
     setConnection((prev) => {
       const next: Record<string, ConnectionStatus> = {};
       for (const name of Object.keys(effective.mcpServers)) {
-        next[name] = prev[name] ?? "connected";
+        next[name] = prev[name] ?? "connecting";
       }
       return next;
     });
@@ -135,9 +139,34 @@ function PureMCPPanelCompact() {
           }),
         });
         const json = await res.json();
-        setStatus(name, json.ok ? "connected" : "error");
+        if (!json.ok) {
+          setStatus(name, "error");
+          setToolsByServer((prev) => {
+            const { [name]: _, ...rest } = prev;
+            return rest;
+          });
+          return;
+        }
+        const tools = Array.isArray(json.tools) ? json.tools : [];
+        if (tools.length === 0) {
+          // Handshake succeeded but the server exposed nothing usable —
+          // typically auth-gated remotes (e.g. Atlassian) that respond OK
+          // before failing to enumerate tools.
+          setStatus(name, "no-tools");
+          setToolsByServer((prev) => {
+            const { [name]: _, ...rest } = prev;
+            return rest;
+          });
+          return;
+        }
+        setStatus(name, "connected");
+        setToolsByServer((prev) => ({ ...prev, [name]: tools }));
       } catch {
         setStatus(name, "error");
+        setToolsByServer((prev) => {
+          const { [name]: _, ...rest } = prev;
+          return rest;
+        });
       }
     },
     [setStatus]
@@ -217,7 +246,8 @@ function PureMCPPanelCompact() {
                     onDisconnect={() => handleDisconnect(name)}
                     onReconnect={() => handleReconnect(name)}
                     server={server}
-                    status={connection[name] ?? "connected"}
+                    status={connection[name] ?? "connecting"}
+                    tools={toolsByServer[name]}
                   />
                 ))
               )}

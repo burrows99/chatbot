@@ -29,13 +29,30 @@ export type Transport = "http" | "sse";
 
 export const EMPTY_MCP_CONFIG: McpConfig = { mcpServers: {} };
 
-export const GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/";
+export const GITHUB_MCP_URL =
+  process.env.NEXT_PUBLIC_GITHUB_MCP_URL ??
+  "https://api.githubcopilot.com/mcp/";
+export const ATLASSIAN_MCP_URL =
+  process.env.NEXT_PUBLIC_ATLASSIAN_MCP_URL ?? "http://localhost:8888/mcp";
+export const PLANNER_MCP_URL =
+  process.env.NEXT_PUBLIC_PLANNER_MCP_URL ?? "http://localhost:8000/mcp";
 
 export const DEFAULT_MCP_CONFIG: McpConfig = {
   mcpServers: {
     github: {
       type: "http",
       url: GITHUB_MCP_URL,
+      headers: {
+        Authorization: "Bearer github_pat_00000...",
+      },
+    },
+    atlassian: {
+      type: "http",
+      url: ATLASSIAN_MCP_URL,
+    },
+    planner: {
+      type: "http",
+      url: PLANNER_MCP_URL,
     },
   },
 };

@@ -52,3 +52,25 @@ services:
       - "6379:6379"
     volumes:
       - ./.volumes/redis:/data
+
+  mcp-atlassian:
+    image: ghcr.io/sooperset/mcp-atlassian:latest
+    restart: unless-stopped
+    container_name: mcp-atlassian
+    command: ["--transport", "streamable-http", "--port", "8888"]
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env.local
+    environment:
+      ATLASSIAN_OAUTH_ENABLE: true
+      TOOLSETS: jira_issues,jira_fields,jira_transitions,jira_projects
+
+  mcp-planner:
+    image: ghcr.io/aixolotl/microsoft-planner-mcp:latest
+    restart: unless-stopped
+    container_name: mcp-planner
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.local

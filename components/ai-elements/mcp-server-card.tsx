@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ChevronDownIcon,
+  ChevronRightIcon,
   EyeIcon,
   EyeOffIcon,
   PlugIcon,
@@ -25,13 +27,15 @@ export type ConnectionStatus =
   | "connected"
   | "disconnected"
   | "connecting"
-  | "error";
+  | "error"
+  | "no-tools";
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
   connected: "Connected",
   disconnected: "Disconnected",
   connecting: "Connecting…",
   error: "Error",
+  "no-tools": "No tools",
 };
 
 const STATUS_DOT: Record<ConnectionStatus, string> = {
@@ -39,6 +43,12 @@ const STATUS_DOT: Record<ConnectionStatus, string> = {
   disconnected: "bg-muted-foreground/40",
   connecting: "bg-amber-500 animate-pulse",
   error: "bg-destructive",
+  "no-tools": "bg-amber-500",
+};
+
+export type McpToolInfo = {
+  name: string;
+  description?: string;
 };
 
 type Props = {
@@ -48,6 +58,7 @@ type Props = {
   onConnect: () => void;
   onDisconnect: () => void;
   onReconnect: () => void;
+  tools?: McpToolInfo[];
 };
 
 function TokenRow({ header }: { header: TokenHeader }) {
@@ -98,6 +109,7 @@ function PureMCPServerCard({
   onConnect,
   onDisconnect,
   onReconnect,
+  tools,
 }: Props) {
   const transport = transportOf(server);
   const busy = status === "connecting";
@@ -105,6 +117,8 @@ function PureMCPServerCard({
     () => findTokenHeaders(server.headers),
     [server.headers]
   );
+  const toolCount = tools?.length ?? 0;
+  const [toolsExpanded, setToolsExpanded] = useState(false);
 
   return (
     <div
@@ -143,6 +157,51 @@ function PureMCPServerCard({
           {tokenHeaders.map((h) => (
             <TokenRow header={h} key={h.name} />
           ))}
+        </div>
+      )}
+      {toolCount > 0 && (
+        <div
+          className="flex flex-col gap-1"
+          data-testid="mcp-server-tools"
+        >
+          <button
+            aria-expanded={toolsExpanded}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            data-testid="mcp-server-tools-toggle"
+            onClick={() => setToolsExpanded((v) => !v)}
+            type="button"
+          >
+            {toolsExpanded ? (
+              <ChevronDownIcon className="size-3" />
+            ) : (
+              <ChevronRightIcon className="size-3" />
+            )}
+            <span>
+              {toolCount} tool{toolCount === 1 ? "" : "s"}
+            </span>
+          </button>
+          {toolsExpanded && tools && (
+            <ul
+              className="max-h-40 overflow-y-auto rounded-md border border-border/40 bg-background/40 p-1.5"
+              data-testid="mcp-server-tools-list"
+            >
+              {tools.map((tool) => (
+                <li
+                  className="flex flex-col px-1.5 py-1 hover:bg-muted/40 rounded"
+                  key={tool.name}
+                >
+                  <code className="font-mono text-[11px] text-foreground">
+                    {tool.name}
+                  </code>
+                  {tool.description && (
+                    <span className="line-clamp-2 text-[10px] text-muted-foreground">
+                      {tool.description}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
       <div className="flex justify-end gap-1.5">
