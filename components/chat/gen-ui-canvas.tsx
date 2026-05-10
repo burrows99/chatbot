@@ -1,130 +1,100 @@
 "use client";
 
-import {
-  autoFixSpec,
-  type Spec,
-  type SpecIssue,
-  validateSpec,
-} from "@json-render/core";
-import { JsonRenderDevtools } from "@json-render/devtools-react";
-import {
-  type DataPart,
-  JSONUIProvider,
-  Renderer,
-  useJsonRenderMessage,
-} from "@json-render/react";
-import type { LucideIcon } from "lucide-react";
-import {
-  AlertTriangleIcon,
-  InfoIcon,
-  PanelRightIcon,
-  SparklesIcon,
-  XIcon,
-} from "lucide-react";
+import type { DynamicToolUIPart } from "ai";
+import { PanelRightIcon, XIcon } from "lucide-react";
 import { useMemo } from "react";
-import { catalog } from "@/lib/gen-ui/catalog";
-import { registry } from "@/lib/gen-ui/registry";
+import { type CanvasView, genUIRegistry } from "@/lib/gen-ui/registry";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 
-function EmptyState({
-  icon: Icon,
-  message,
-  testId,
-}: {
-  icon: LucideIcon;
-  message: string;
-  testId: string;
-}) {
-  return (
-    <div
-      className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground"
-      data-testid={testId}
-    >
-      <Icon className="size-8 opacity-40" />
-      <p className="text-center text-sm">{message}</p>
-    </div>
-  );
+type CanvasRenderDataPart = {
+  type: "data-canvas-render";
+  data: { sourceToolName: string; views?: CanvasView[] };
+};
+
+type CanvasRenderRequest = {
+  sourceToolName: string;
+  views: CanvasView[];
+};
+
+function findLatestCanvasRenderData(
+  messages: ChatMessage[]
+): CanvasRenderRequest | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const parts = messages[i].parts ?? [];
+    for (let j = parts.length - 1; j >= 0; j--) {
+      const part = parts[j] as { type?: string };
+      if (part.type !== "data-canvas-render") {
+        continue;
+      }
+      const dataPart = part as unknown as CanvasRenderDataPart;
+      if (typeof dataPart.data?.sourceToolName === "string") {
+        const requested = Array.isArray(dataPart.data.views)
+          ? dataPart.data.views
+          : [];
+        const views = Array.from(
+          new Set(
+            requested.filter(
+              (v) => v === "grid" || v === "kanban" || v === "gantt"
+            )
+          )
+        );
+        return {
+          sourceToolName: dataPart.data.sourceToolName,
+          views: views.length > 0 ? views : ["grid"],
+        };
+      }
+    }
+  }
+  return null;
 }
 
-function AutoFixNotes({ notes }: { notes: string[] }) {
-  const uniqueNotes = Array.from(new Set(notes));
-  return (
-    <div
-      className="mb-3 rounded-md border border-blue-500/40 bg-blue-500/5 p-3 text-blue-700 dark:text-blue-400"
-      data-testid="gen-ui-autofix-notes"
-    >
-      <div className="flex items-center gap-2 font-medium text-xs">
-        <InfoIcon className="size-3.5" />
-        Spec auto-corrections applied
-      </div>
-      <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {uniqueNotes.map((note) => (
-          <li key={note}>{note}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function SpecIssues({ issues }: { issues: SpecIssue[] }) {
-  return (
-    <div
-      className="mb-3 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-amber-700 dark:text-amber-400"
-      data-testid="gen-ui-spec-issues"
-    >
-      <div className="flex items-center gap-2 font-medium text-xs">
-        <AlertTriangleIcon className="size-3.5" />
-        Spec validation issues
-      </div>
-      <ul className="mt-1.5 list-disc pl-5 text-xs leading-relaxed">
-        {issues.map((issue, i) => (
-          <li
-            key={`${issue.code}:${issue.elementKey ?? ""}:${issue.message}:${i}`}
-          >
-            <span className="font-medium">[{issue.severity}]</span>{" "}
-            {issue.message}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+function findSourceOutput(
+  messages: ChatMessage[],
+  toolName: string
+): unknown | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const parts = messages[i].parts ?? [];
+    for (let j = parts.length - 1; j >= 0; j--) {
+      const part = parts[j] as { type?: string };
+      if (part.type !== "dynamic-tool") {
+        continue;
+      }
+      const dyn = part as DynamicToolUIPart;
+      if (dyn.state !== "output-available") {
+        continue;
+      }
+      if (dyn.toolName === toolName) {
+        return dyn.output;
+      }
+    }
+  }
+  return null;
 }
 
 export function GenUICanvas({
-  onClose,
   messages,
-  isLoading = false,
+  onClose,
 }: {
-  onClose: () => void;
   messages: ChatMessage[];
-  isLoading?: boolean;
+  onClose: () => void;
 }) {
-  const lastAssistantMessage = [...messages]
-    .reverse()
-    .find((m) => m.role === "assistant");
-
-  const parts = (lastAssistantMessage?.parts ?? []) as DataPart[];
-  const { spec: rawSpec, hasSpec } = useJsonRenderMessage(parts);
-
-  const { spec, issues, autoFixNotes } = useMemo<{
-    spec: Spec | null;
-    issues: SpecIssue[];
-    autoFixNotes: string[];
-  }>(() => {
-    if (!(hasSpec && rawSpec)) {
-      return { spec: null, issues: [], autoFixNotes: [] };
+  const rendered = useMemo(() => {
+    const request = findLatestCanvasRenderData(messages);
+    if (!request) {
+      return null;
     }
-    const { spec: fixed, fixes } = autoFixSpec(rawSpec);
-    if (isLoading) {
-      return { spec: fixed, issues: [], autoFixNotes: fixes };
+    const output = findSourceOutput(messages, request.sourceToolName);
+    if (output == null) {
+      return null;
     }
-    const result = validateSpec(fixed, { checkOrphans: true });
-    return { spec: fixed, issues: result.issues, autoFixNotes: fixes };
-  }, [rawSpec, hasSpec, isLoading]);
-
-  const blockingErrors = issues.filter((i) => i.severity === "error");
+    return genUIRegistry.render(
+      request.sourceToolName,
+      output,
+      request.views
+    );
+  }, [messages]);
 
   return (
     <div className="flex h-full flex-col" data-testid="gen-ui-canvas">
@@ -145,50 +115,12 @@ export function GenUICanvas({
           <XIcon className="size-4" />
         </Button>
       </div>
-
-      {lastAssistantMessage ? (
-        <div
-          className="min-h-0 flex-1 overflow-y-auto p-4"
-          data-testid="gen-ui-canvas-content"
-        >
-          {spec ? (
-            <>
-              {autoFixNotes.length > 0 && <AutoFixNotes notes={autoFixNotes} />}
-              {issues.length > 0 && <SpecIssues issues={issues} />}
-              {blockingErrors.length === 0 && (
-                <JSONUIProvider initialState={spec.state} registry={registry}>
-                  <Renderer
-                    loading={isLoading}
-                    registry={registry}
-                    spec={spec}
-                  />
-                  <JsonRenderDevtools
-                    catalog={catalog}
-                    messages={messages}
-                    spec={spec}
-                  />
-                </JSONUIProvider>
-              )}
-            </>
-          ) : (
-            <EmptyState
-              icon={SparklesIcon}
-              message="The model didn't emit a UI spec for this turn."
-              testId="gen-ui-no-spec"
-            />
-          )}
-        </div>
-      ) : (
-        <div
-          className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground"
-          data-testid="gen-ui-empty-state"
-        >
-          <PanelRightIcon className="size-8 opacity-40" />
-          <p className="text-center text-sm">
-            Ask anything in the chat — UI will appear here when generated.
-          </p>
-        </div>
-      )}
+      <div
+        className="min-h-0 flex-1 overflow-auto p-4"
+        data-testid="gen-ui-canvas-content"
+      >
+        {rendered}
+      </div>
     </div>
   );
 }

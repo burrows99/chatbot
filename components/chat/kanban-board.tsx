@@ -1,180 +1,346 @@
 "use client";
 
-import { GripVerticalIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 import {
-  Kanban,
-  KanbanBoard as KanbanBoardPrimitive,
-  KanbanColumn,
-  KanbanColumnContent,
-  KanbanColumnHandle,
-  KanbanItem,
-  KanbanItemHandle,
-  KanbanOverlay,
-} from "@/components/reui/kanban";
-import { Badge } from "@/components/ui/badge";
+  ExternalLinkIcon,
+  MessageSquareIcon,
+  SmileIcon,
+} from "lucide-react";
+import Link from "next/link";
+import type { MouseEvent } from "react";
+import { useEffect, useId, useState } from "react";
+import {
+  KanbanBoard,
+  KanbanBoardAccessibility,
+  KanbanBoardCard,
+  KanbanBoardCardButton,
+  KanbanBoardCardButtonGroup,
+  KanbanBoardCardTitle,
+  type KanbanBoardCircleColor,
+  KanbanBoardColumn,
+  KanbanBoardColumnHeader,
+  KanbanBoardColumnList,
+  KanbanBoardColumnListItem,
+  KanbanBoardColumnTitle,
+  KanbanBoardProvider,
+  KanbanColorCircle,
+} from "@/components/kanban";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-interface BoardItem {
-  id: string | number;
-  title: string;
-  description?: string | null;
-  column: string;
-  labels?: string[] | null;
-  url?: string | null;
+export interface IKanbanCardLabel {
+  name: string;
+  color: string;
 }
 
-interface BoardColumn {
+export interface IKanbanCardAssignee {
+  login: string;
+  avatar: string;
+}
+
+export interface IKanbanCard {
   id: string;
   title: string;
-  color?: string | null;
+  description?: string;
+  avatar?: string;
+  url?: string;
+  number?: number;
+  repoSlug?: string;
+  authorLogin?: string;
+  authorAssociation?: string;
+  createdAt?: string;
+  closedAt?: string;
+  commentsCount?: number;
+  reactionsCount?: number;
+  labels?: IKanbanCardLabel[];
+  assignees?: IKanbanCardAssignee[];
+  stateReason?: string;
 }
 
-interface KanbanBoardProps {
-  columns?: BoardColumn[] | null;
-  items?: BoardItem[] | null;
-  title?: string | null;
+export interface IKanbanColumn {
+  id: string;
+  title: string;
+  color?: KanbanBoardCircleColor;
+  cards: IKanbanCard[];
 }
 
-const DEFAULT_COLUMNS: BoardColumn[] = [
-  { id: "todo", title: "To Do" },
-  { id: "in_progress", title: "In Progress" },
-  { id: "done", title: "Done" },
-];
+export interface KanbanBoardComponentProps {
+  columns: IKanbanColumn[];
+}
 
-export function KanbanBoard({ columns, items, title }: KanbanBoardProps) {
-  const cols = columns && columns.length > 0 ? columns : DEFAULT_COLUMNS;
+type DragPayload = { id: string };
 
-  const derived = useMemo(() => {
-    const result: Record<string, BoardItem[]> = {};
-    for (const col of cols) {
-      result[col.id] = (items ?? []).filter((item) => item.column === col.id);
+function parseDragPayload(raw: string): string | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<DragPayload>;
+    return typeof parsed.id === "string" ? parsed.id : null;
+  } catch {
+    return null;
+  }
+}
+
+function moveCardInColumns(
+  prev: IKanbanColumn[],
+  cardId: string,
+  targetColumnId: string,
+  anchorCardId?: string,
+  position: "top" | "bottom" = "bottom"
+): IKanbanColumn[] {
+  let card: IKanbanCard | undefined;
+  const stripped = prev.map((col) => {
+    const idx = col.cards.findIndex((c) => c.id === cardId);
+    if (idx < 0) {
+      return col;
     }
-    return result;
-  }, [cols, items]);
+    card = col.cards[idx];
+    return { ...col, cards: col.cards.filter((c) => c.id !== cardId) };
+  });
+  if (!card) {
+    return prev;
+  }
+  const movedCard = card;
+  return stripped.map((col) => {
+    if (col.id !== targetColumnId) {
+      return col;
+    }
+    if (!anchorCardId) {
+      return { ...col, cards: [...col.cards, movedCard] };
+    }
+    const anchorIdx = col.cards.findIndex((c) => c.id === anchorCardId);
+    if (anchorIdx < 0) {
+      return { ...col, cards: [...col.cards, movedCard] };
+    }
+    const insertAt = position === "top" ? anchorIdx : anchorIdx + 1;
+    const next = [...col.cards];
+    next.splice(insertAt, 0, movedCard);
+    return { ...col, cards: next };
+  });
+}
 
-  const [columnData, setColumnData] = useState(derived);
-  useEffect(() => {
-    setColumnData(derived);
-  }, [derived]);
+function formatRelative(iso?: string): string | null {
+  if (!iso) {
+    return null;
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return formatDistanceToNow(date, { addSuffix: true });
+}
 
-  const colMap = useMemo(
-    () => Object.fromEntries(cols.map((c) => [c.id, c])),
-    [cols]
-  );
+function initialsFor(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function KanbanCardBody({ card }: { card: IKanbanCard }) {
+  const created = formatRelative(card.createdAt);
+  const closed = formatRelative(card.closedAt);
+  const labels = card.labels ?? [];
+  const assignees = card.assignees ?? [];
 
   return (
-    <div className="flex flex-col gap-3 h-full">
-      {title && (
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      )}
-      <Kanban
-        getItemValue={(item: BoardItem) => item.id.toString()}
-        onValueChange={setColumnData}
-        value={columnData}
-      >
-        <KanbanBoardPrimitive className="flex gap-3 overflow-x-auto flex-1 pb-2 grid-cols-none">
-          {cols.map((col) => {
-            const colItems = columnData[col.id] ?? [];
-            return (
-              <KanbanColumn
-                className="flex flex-col min-w-[220px] flex-1"
-                key={col.id}
-                value={col.id}
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start gap-2">
+        {card.avatar !== undefined && (
+          <Avatar className="size-6 shrink-0">
+            <AvatarImage alt={card.title} src={card.avatar} />
+            <AvatarFallback>
+              {initialsFor(card.title || card.authorLogin || "?")}
+            </AvatarFallback>
+          </Avatar>
+        )}
+        <div className="min-w-0 flex-1">
+          <KanbanBoardCardTitle className="truncate">
+            {card.url ? (
+              <Link
+                className="hover:text-primary"
+                href={card.url}
+                onClick={(event: MouseEvent) => event.stopPropagation()}
+                rel="noopener noreferrer"
+                target="_blank"
               >
-                <div className="flex items-center justify-between gap-2 px-1 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">
-                      {col.title}
-                    </span>
-                    <Badge className="text-xs h-5 px-1.5" variant="secondary">
-                      {colItems.length}
-                    </Badge>
-                  </div>
-                  <KanbanColumnHandle className="text-muted-foreground hover:text-foreground">
-                    <GripVerticalIcon size={14} />
-                  </KanbanColumnHandle>
-                </div>
-                <KanbanColumnContent
-                  className="rounded-lg bg-muted/40 p-2 flex-1 min-h-[120px]"
-                  value={col.id}
-                >
-                  {colItems.length === 0 ? (
-                    <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground py-6">
-                      No items
-                    </div>
-                  ) : (
-                    colItems.map((item) => (
-                      <KanbanItem
-                        key={item.id.toString()}
-                        value={item.id.toString()}
-                      >
-                        <KanbanItemHandle className="rounded-md bg-card border border-border/50 p-3 shadow-sm flex flex-col gap-1.5 hover:border-border transition-colors">
-                          {item.url ? (
-                            <a
-                              className="text-sm font-medium text-foreground hover:underline leading-snug"
-                              href={item.url}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              {item.title}
-                            </a>
-                          ) : (
-                            <p className="text-sm font-medium text-foreground leading-snug">
-                              {item.title}
-                            </p>
-                          )}
-                          {item.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                              {item.description}
-                            </p>
-                          )}
-                          {item.labels && item.labels.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-0.5">
-                              {item.labels.map((label) => (
-                                <Badge
-                                  className="text-[10px] h-4 px-1.5 font-normal"
-                                  key={label}
-                                  variant="outline"
-                                >
-                                  {label}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </KanbanItemHandle>
-                      </KanbanItem>
-                    ))
-                  )}
-                </KanbanColumnContent>
-              </KanbanColumn>
-            );
-          })}
-        </KanbanBoardPrimitive>
-        <KanbanOverlay>
-          {({ value, variant }) => {
-            if (variant === "column") {
-              const col = colMap[value as string];
-              return (
-                <div className="flex flex-col min-w-[220px] rounded-lg bg-muted/60 p-2 border border-border opacity-90">
-                  <span className="text-sm font-semibold text-foreground px-1">
-                    {col?.title ?? value}
-                  </span>
-                </div>
-              );
-            }
-            const item = Object.values(columnData)
-              .flat()
-              .find((i: BoardItem) => i.id.toString() === value);
-            return (
-              <div className="rounded-md bg-card border border-border p-3 shadow-lg flex flex-col gap-1.5 min-w-[220px]">
-                <p className="text-sm font-medium text-foreground leading-snug">
-                  {item?.title ?? value}
-                </p>
-              </div>
-            );
-          }}
-        </KanbanOverlay>
-      </Kanban>
+                {card.title}
+              </Link>
+            ) : (
+              card.title
+            )}
+          </KanbanBoardCardTitle>
+          {(card.repoSlug || card.number !== undefined) && (
+            <div className="mt-0.5 truncate text-muted-foreground text-xs">
+              {card.repoSlug ?? ""}
+              {card.repoSlug && card.number !== undefined ? " " : ""}
+              {card.number !== undefined ? `#${card.number}` : ""}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {labels.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {labels.slice(0, 5).map((label) => (
+            <span
+              className="inline-flex items-center rounded-full border px-1.5 py-0.5 font-medium text-[10px] leading-none"
+              key={label.name}
+              style={{
+                borderColor: `#${label.color}`,
+                color: `#${label.color}`,
+              }}
+            >
+              {label.name}
+            </span>
+          ))}
+          {labels.length > 5 && (
+            <span className="text-[10px] text-muted-foreground">
+              +{labels.length - 5}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 text-muted-foreground text-xs">
+        <div className="flex min-w-0 flex-1 items-center gap-2 truncate">
+          {card.authorLogin && (
+            <span className="truncate">@{card.authorLogin}</span>
+          )}
+          {created && (
+            <>
+              <span className="opacity-50">·</span>
+              <span className="truncate">
+                opened {created}
+                {closed ? `, closed ${closed}` : ""}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {card.commentsCount !== undefined && card.commentsCount > 0 && (
+            <span className="inline-flex items-center gap-0.5">
+              <MessageSquareIcon className="size-3" />
+              {card.commentsCount}
+            </span>
+          )}
+          {card.reactionsCount !== undefined && card.reactionsCount > 0 && (
+            <span className="inline-flex items-center gap-0.5">
+              <SmileIcon className="size-3" />
+              {card.reactionsCount}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {assignees.length > 0 && (
+        <div className="-space-x-1.5 flex">
+          {assignees.slice(0, 4).map((assignee) => (
+            <Avatar
+              className="size-5 ring-2 ring-background"
+              key={assignee.login}
+            >
+              <AvatarImage alt={assignee.login} src={assignee.avatar} />
+              <AvatarFallback>{initialsFor(assignee.login)}</AvatarFallback>
+            </Avatar>
+          ))}
+          {assignees.length > 4 && (
+            <span className="ml-2 text-[10px] text-muted-foreground">
+              +{assignees.length - 4}
+            </span>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+export function KanbanBoardComponent({
+  columns: propsColumns,
+}: KanbanBoardComponentProps) {
+  const hiddenTextDescribedById = useId();
+  const [columns, setColumns] = useState<IKanbanColumn[]>(propsColumns);
+
+  useEffect(() => {
+    setColumns(propsColumns);
+  }, [propsColumns]);
+
+  return (
+    <KanbanBoardProvider>
+      <KanbanBoardAccessibility
+        hiddenTextDescribedById={hiddenTextDescribedById}
+      />
+      <KanbanBoard className="h-full">
+        {columns.map((col) => (
+          <KanbanBoardColumn
+            columnId={col.id}
+            key={col.id}
+            onDropOverColumn={(raw) => {
+              const cardId = parseDragPayload(raw);
+              if (cardId) {
+                setColumns((prev) => moveCardInColumns(prev, cardId, col.id));
+              }
+            }}
+          >
+            <KanbanBoardColumnHeader>
+              <KanbanBoardColumnTitle columnId={col.id}>
+                {col.color && <KanbanColorCircle color={col.color} />}
+                {col.title}
+              </KanbanBoardColumnTitle>
+              <span className="text-muted-foreground text-xs">
+                {col.cards.length}
+              </span>
+            </KanbanBoardColumnHeader>
+            <KanbanBoardColumnList>
+              {col.cards.map((card) => (
+                <KanbanBoardColumnListItem
+                  cardId={card.id}
+                  key={card.id}
+                  onDropOverListItem={(raw, direction) => {
+                    const cardId = parseDragPayload(raw);
+                    if (
+                      cardId &&
+                      cardId !== card.id &&
+                      (direction === "top" || direction === "bottom")
+                    ) {
+                      setColumns((prev) =>
+                        moveCardInColumns(
+                          prev,
+                          cardId,
+                          col.id,
+                          card.id,
+                          direction
+                        )
+                      );
+                    }
+                  }}
+                >
+                  <KanbanBoardCard data={{ id: card.id }}>
+                    {card.url && (
+                      <KanbanBoardCardButtonGroup>
+                        <KanbanBoardCardButton
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            window.open(
+                              card.url,
+                              "_blank",
+                              "noopener,noreferrer"
+                            );
+                          }}
+                          tooltip="Open on GitHub"
+                        >
+                          <ExternalLinkIcon className="size-3.5 text-muted-foreground" />
+                        </KanbanBoardCardButton>
+                      </KanbanBoardCardButtonGroup>
+                    )}
+                    <KanbanCardBody card={card} />
+                  </KanbanBoardCard>
+                </KanbanBoardColumnListItem>
+              ))}
+            </KanbanBoardColumnList>
+          </KanbanBoardColumn>
+        ))}
+      </KanbanBoard>
+    </KanbanBoardProvider>
   );
 }

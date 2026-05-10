@@ -66,6 +66,7 @@ export function ChatShell() {
   stopRef.current = stop;
 
   const prevChatIdRef = useRef(chatId);
+  const seenRenderableCountRef = useRef(0);
   useEffect(() => {
     if (prevChatIdRef.current !== chatId) {
       prevChatIdRef.current = chatId;
@@ -73,8 +74,46 @@ export function ChatShell() {
       setArtifact(initialArtifactData);
       setEditingMessage(null);
       setAttachments([]);
+      seenRenderableCountRef.current = 0;
     }
   }, [chatId, setArtifact]);
+
+  useEffect(() => {
+    let renderableCount = 0;
+    for (const msg of messages) {
+      const parts = msg.parts ?? [];
+      for (const part of parts) {
+        const p = part as { type?: string; data?: { sourceToolName?: string } };
+        if (
+          p.type === "data-canvas-render" &&
+          typeof p.data?.sourceToolName === "string"
+        ) {
+          const sourceName = p.data.sourceToolName;
+          const hasSourceOutput = messages.some((m) =>
+            (m.parts ?? []).some((sp) => {
+              const s = sp as {
+                type?: string;
+                toolName?: string;
+                state?: string;
+              };
+              return (
+                s.type === "dynamic-tool" &&
+                s.toolName === sourceName &&
+                s.state === "output-available"
+              );
+            })
+          );
+          if (hasSourceOutput) {
+            renderableCount++;
+          }
+        }
+      }
+    }
+    if (renderableCount > seenRenderableCountRef.current) {
+      setIsGenUICanvasVisible(true);
+    }
+    seenRenderableCountRef.current = renderableCount;
+  }, [messages]);
 
   const showCanvas = isGenUICanvasVisible && !isArtifactVisible;
 
@@ -168,7 +207,6 @@ export function ChatShell() {
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize="80%" maxSize="90%" minSize="20%">
               <GenUICanvas
-                isLoading={isLoading}
                 messages={messages}
                 onClose={() => setIsGenUICanvasVisible(false)}
               />

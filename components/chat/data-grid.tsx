@@ -2,253 +2,257 @@
 
 import {
   type ColumnDef,
+  type ColumnFiltersState,
+  flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   type PaginationState,
+  type RowSelectionState,
   type SortingState,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
+import {
+  ArrowUpDown,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ExternalLinkIcon,
+  MoreHorizontalIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  DataGrid,
-  DataGridContainer,
-} from "@/components/reui/data-grid/data-grid";
-import { DataGridPagination } from "@/components/reui/data-grid/data-grid-pagination";
-import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
-import { DataGridTable } from "@/components/reui/data-grid/data-grid-table";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
-const users = [
-  {
-    id: "1",
-    name: "Alex Johnson",
-    email: "alex@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=96&h=96&dpr=2&q=80",
-    initials: "AJ",
-  },
-  {
-    id: "2",
-    name: "Sarah Chen",
-    email: "sarah@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=96&h=96&dpr=2&q=80",
-    initials: "SC",
-  },
-  {
-    id: "3",
-    name: "Michael Rodriguez",
-    email: "michael@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1584308972272-9e4e7685e80f?w=96&h=96&dpr=2&q=80",
-    initials: "MR",
-  },
-  {
-    id: "4",
-    name: "Emma Wilson",
-    email: "emma@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1485893086445-ed75865251e0?w=96&h=96&dpr=2&q=80",
-    initials: "EW",
-  },
-  {
-    id: "5",
-    name: "David Kim",
-    email: "david@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=96&h=96&dpr=2&q=80",
-    initials: "DK",
-  },
-  {
-    id: "6",
-    name: "Aron Thompson",
-    email: "lisa@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=96&h=96&dpr=2&q=80",
-    initials: "LT",
-  },
-  {
-    id: "7",
-    name: "James Brown",
-    email: "james@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1543299750-19d1d6297053?w=96&h=96&dpr=2&q=80",
-    initials: "JB",
-  },
-  {
-    id: "8",
-    name: "Maria Garcia",
-    email: "maria@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1620075225255-8c2051b6c015?w=96&h=96&dpr=2&q=80",
-    initials: "MG",
-  },
-  {
-    id: "9",
-    name: "Nick Johnson",
-    email: "nick@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1485206412256-701ccc5b93ca?w=96&h=96&dpr=2&q=80",
-    initials: "NJ",
-  },
-  {
-    id: "10",
-    name: "Liam Thompson",
-    email: "liam@example.com",
-    avatar:
-      "https://images.unsplash.com/photo-1542595913-85d69b0edbaf?w=96&h=96&dpr=2&q=80",
-    initials: "LT",
-  },
-];
-
-interface IData {
+export interface IData {
   id: string;
   name: string;
   availability: "online" | "away" | "busy" | "offline";
   avatar: string;
   status: "active" | "inactive";
-  flag: string; // Emoji flags
+  flag: string;
   email: string;
   company: string;
   role: string;
   joined: string;
   location: string;
   balance: number;
+  url: string;
 }
 
-const demoData: IData[] = users.map((user, index) => ({
-  ...user,
-  availability: (["online", "away", "busy", "offline"] as const)[index % 4],
-  status: (index % 2 === 0 ? "active" : "inactive") as "active" | "inactive",
-  flag: (["us", "gb", "ca", "au", "de", "my", "es", "jp", "fr", "it"] as const)[
-    index % 10
-  ],
-  company: (
-    [
-      "Apple",
-      "OpenAI",
-      "Meta",
-      "Tesla",
-      "SAP",
-      "Keenthemes",
-      "BBVA",
-      "Sony",
-      "LVMH",
-      "ENI",
-    ] as const
-  )[index % 10],
-  role: (
-    [
-      "CEO",
-      "CTO",
-      "Designer",
-      "Developer",
-      "Lawyer",
-      "Director",
-      "Product Manager",
-      "Marketing Lead",
-      "Data Scientist",
-      "Engineer",
-    ] as const
-  )[index % 10],
-  joined: "Jan, 2024",
-  location: (
-    [
-      "United States",
-      "United Kingdom",
-      "Canada",
-      "Australia",
-      "Germany",
-      "Malaysia",
-      "Spain",
-      "Japan",
-      "France",
-      "Italy",
-    ] as const
-  )[index % 10],
-  balance: 5143.03 + index * 100,
-}));
+export interface DataGridComponentProps {
+  data: IData[];
+  pageSize?: number;
+  initialSorting?: SortingState;
+}
 
-export function Pattern() {
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+
+export function DataGridComponent({
+  data,
+  pageSize = 5,
+  initialSorting = [],
+}: DataGridComponentProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 5,
+    pageSize,
   });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "name", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>(initialSorting);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const columns = useMemo<ColumnDef<IData>[]>(
     () => [
       {
-        accessorKey: "name",
-        header: "Name",
-        cell: (info) => (
-          <span className="font-medium">{info.getValue() as string}</span>
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            aria-label="Select all"
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() ? "indeterminate" : false)
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+          />
         ),
-        size: 150,
-        meta: {
-          headerClassName: "",
-          cellClassName: "",
-        },
+        cell: ({ row }) => (
+          <Checkbox
+            aria-label="Select row"
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        size: 32,
       },
       {
-        accessorKey: "email",
-        header: "Email",
-        cell: (info) => (
-          <div className="truncate">
-            <Link
-              className="hover:text-primary truncate hover:underline"
-              href={`mailto:${info.getValue()}`}
-            >
-              {info.getValue() as string}
-            </Link>
+        accessorKey: "name",
+        header: ({ column }) => (
+          <Button
+            className="-ml-3 h-8 px-2"
+            onClick={() =>
+              column.toggleSorting(column.getIsSorted() === "asc")
+            }
+            size="sm"
+            variant="ghost"
+          >
+            Name
+            <ArrowUpDown className="ml-2 size-3.5" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <Avatar className="size-6">
+              <AvatarImage alt={row.original.name} src={row.original.avatar} />
+              <AvatarFallback>
+                {row.original.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
+            {row.original.url ? (
+              <Link
+                className="font-medium text-foreground hover:text-primary"
+                href={row.original.url}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {row.original.name}
+              </Link>
+            ) : (
+              <span className="font-medium text-foreground">
+                {row.original.name}
+              </span>
+            )}
           </div>
         ),
-        size: 150,
-        meta: {
-          headerClassName: "",
-          cellClassName: "",
-        },
       },
       {
         accessorKey: "location",
         header: "Location",
         cell: ({ row }) => (
           <div className="flex items-center gap-1.5">
-            <div
-              aria-label={row.original.flag}
-              className="size-4 rounded-full object-cover bg-cover bg-center"
-              role="img"
-              style={{
-                backgroundImage: `url('https://flagcdn.com/${row.original.flag.toLowerCase()}.svg')`,
-              }}
-            />
-            <div className="text-foreground font-medium">
+            {row.original.flag && (
+              <div
+                className="size-4 rounded-full bg-cover bg-center"
+                style={{
+                  backgroundImage: `url(https://flagcdn.com/${row.original.flag.toLowerCase()}.svg)`,
+                }}
+              />
+            )}
+            <span className="font-medium text-foreground">
               {row.original.location}
-            </div>
+            </span>
           </div>
         ),
-        size: 175,
-        meta: {
-          headerClassName: "",
-          cellClassName: "",
-        },
       },
       {
         accessorKey: "balance",
-        header: "Balance ($)",
-        cell: (info) => (
-          <span className="font-semibold">
-            ${(info.getValue() as number).toFixed(2)}
-          </span>
+        header: ({ column }) => (
+          <Button
+            className="-mr-3 h-8 w-full justify-end px-2"
+            onClick={() =>
+              column.toggleSorting(column.getIsSorted() === "asc")
+            }
+            size="sm"
+            variant="ghost"
+          >
+            Balance ($)
+            <ArrowUpDown className="ml-2 size-3.5" />
+          </Button>
         ),
-        size: 120,
-        meta: {
-          headerClassName: "text-right rtl:text-left",
-          cellClassName: "text-right rtl:text-left",
+        cell: ({ row }) => (
+          <div className="text-right font-semibold">
+            ${row.original.balance.toFixed(2)}
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        cell: ({ row }) => {
+          const { url } = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="size-7 p-0"
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <span className="sr-only">Open row actions</span>
+                  <MoreHorizontalIcon className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  disabled={!url}
+                  onClick={() => {
+                    if (url) {
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }
+                  }}
+                >
+                  <ExternalLinkIcon className="mr-2 size-3.5" />
+                  Open on GitHub
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!url}
+                  onClick={() => {
+                    if (url) {
+                      navigator.clipboard.writeText(url);
+                    }
+                  }}
+                >
+                  Copy URL
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => navigator.clipboard.writeText(row.original.id)}
+                >
+                  Copy ID
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
         },
       },
     ],
@@ -256,32 +260,191 @@ export function Pattern() {
   );
 
   const table = useReactTable({
+    data,
     columns,
-    data: demoData,
-    pageCount: Math.ceil((demoData?.length || 0) / pagination.pageSize),
-    getRowId: (row: IData) => row.id,
+    getRowId: (row) => row.id,
     state: {
       pagination,
       sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
     },
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    enableRowSelection: true,
   });
 
+  const rowCount = table.getFilteredRowModel().rows.length;
+  const currentPageSize = pagination.pageSize;
+  const currentPageIndex = pagination.pageIndex;
+  const pageCount = table.getPageCount();
+  const from = rowCount === 0 ? 0 : currentPageIndex * currentPageSize + 1;
+  const to = Math.min((currentPageIndex + 1) * currentPageSize, rowCount);
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
+
+  const nameFilter =
+    (table.getColumn("name")?.getFilterValue() as string | undefined) ?? "";
+
   return (
-    <DataGrid recordCount={demoData?.length || 0} table={table}>
-      <div className="w-full space-y-2.5">
-        <DataGridContainer>
-          <DataGridScrollArea>
-            <DataGridTable />
-          </DataGridScrollArea>
-        </DataGridContainer>
-        <DataGridPagination />
+    <div className="w-full space-y-2.5">
+      <div className="flex items-center gap-2">
+        <Input
+          aria-label="Filter by name"
+          className="h-9 max-w-sm"
+          onChange={(event) =>
+            table.getColumn("name")?.setFilterValue(event.target.value)
+          }
+          placeholder="Filter by name..."
+          value={nameFilter}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="ml-auto h-9" size="sm" variant="outline">
+              <SlidersHorizontalIcon className="mr-2 size-3.5" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => (
+                <DropdownMenuCheckboxItem
+                  checked={column.getIsVisible()}
+                  className="capitalize"
+                  key={column.id}
+                  onCheckedChange={(value) =>
+                    column.toggleVisibility(!!value)
+                  }
+                >
+                  {column.id}
+                </DropdownMenuCheckboxItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </DataGrid>
+
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.length > 0 ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  data-state={row.getIsSelected() ? "selected" : undefined}
+                  key={row.id}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  className="h-24 text-center text-muted-foreground"
+                  colSpan={columns.length}
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 text-sm">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <span>
+            {selectedCount > 0
+              ? `${selectedCount} of ${rowCount} selected`
+              : `${rowCount} rows`}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>Rows per page</span>
+            <Select
+              onValueChange={(value) => table.setPageSize(Number(value))}
+              value={`${currentPageSize}`}
+            >
+              <SelectTrigger className="h-8 w-20" size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <span className="text-muted-foreground">
+            {from} – {to} of {rowCount}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              className="size-7 p-0"
+              disabled={!table.getCanPreviousPage()}
+              onClick={() => table.previousPage()}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <ChevronLeftIcon className="size-4" />
+              <span className="sr-only">Previous page</span>
+            </Button>
+            <span
+              className={cn(
+                "min-w-[5ch] text-center font-medium",
+                pageCount === 0 && "text-muted-foreground"
+              )}
+            >
+              {pageCount === 0 ? "-" : `${currentPageIndex + 1} / ${pageCount}`}
+            </span>
+            <Button
+              className="size-7 p-0"
+              disabled={!table.getCanNextPage()}
+              onClick={() => table.nextPage()}
+              size="icon-sm"
+              variant="ghost"
+            >
+              <ChevronRightIcon className="size-4" />
+              <span className="sr-only">Next page</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
