@@ -167,7 +167,10 @@ export function ChatShell() {
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize="80%" maxSize="90%" minSize="20%">
-              <GenUICanvas onClose={() => setIsGenUICanvasVisible(false)} />
+              <GenUICanvas
+                messages={messages}
+                onClose={() => setIsGenUICanvasVisible(false)}
+              />
             </ResizablePanel>
           </ResizablePanelGroup>
         ) : (

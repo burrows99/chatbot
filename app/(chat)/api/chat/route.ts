@@ -23,6 +23,7 @@ import {
 import { isOllamaModelId, ollamaManager } from "@/lib/ai/ollama";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { canvasRender } from "@/lib/ai/tools/canvas-render";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 // import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 // import { updateDocument } from "@/lib/ai/tools/update-document";
@@ -222,7 +223,7 @@ export async function POST(request: Request) {
           experimental_activeTools:
             isReasoningModel && !supportsTools
               ? []
-              : (["getWeather", ...mcpToolNames] as never),
+              : (["getWeather", "canvasRender", ...mcpToolNames] as never),
           providerOptions: {
             ...(modelConfig?.gatewayOrder && {
               gateway: { order: modelConfig.gatewayOrder },
@@ -237,6 +238,7 @@ export async function POST(request: Request) {
           },
           tools: {
             getWeather,
+            canvasRender: canvasRender({ dataStream }),
             ...mcp.tools,
           },
           experimental_telemetry: {

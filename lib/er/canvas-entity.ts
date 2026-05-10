@@ -1,7 +1,7 @@
 // biome-ignore lint/complexity/noStaticOnlyClass: base entity utility
 export class CanvasEntity {
-  static fromRaw<T extends CanvasEntity>(this: new () => T, raw: unknown): T {
-    const instance = new CanvasEntity();
+  static fromRaw<T extends CanvasEntity>(Ctor: new () => T, raw: unknown): T {
+    const instance = new Ctor();
 
     const assignRecursive = (target: any, source: any) => {
       if (!source || typeof source !== "object") {
