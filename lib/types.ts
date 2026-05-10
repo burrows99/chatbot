@@ -45,7 +45,7 @@ export type CustomUIDataTypes = {
   "chat-title": string;
   "canvas-render": {
     sourceToolName: string;
-    views?: ("grid" | "kanban")[];
+    views?: ("grid" | "kanban" | "gantt")[];
   };
 };
 

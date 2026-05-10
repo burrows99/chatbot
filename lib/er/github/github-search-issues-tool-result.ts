@@ -3,6 +3,9 @@ import type {
   IData,
 } from "@/components/chat/data-grid";
 import type {
+  GanttChartComponentProps,
+} from "@/components/chat/gantt-chart";
+import type {
   IKanbanColumn,
   KanbanBoardComponentProps,
 } from "@/components/chat/kanban-board";
@@ -49,5 +52,9 @@ export class GitHubSearchIssuesToolResult extends CanvasEntity {
       target.cards.push(issue.kanbanCard);
     }
     return { columns: [open, closed] };
+  }
+
+  get ganttChartProps(): GanttChartComponentProps {
+    return { features: this.items.map((issue) => issue.ganttFeature) };
   }
 }

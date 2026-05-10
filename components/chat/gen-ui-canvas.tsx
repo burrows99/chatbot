@@ -34,7 +34,11 @@ function findLatestCanvasRenderData(
           ? dataPart.data.views
           : [];
         const views = Array.from(
-          new Set(requested.filter((v) => v === "grid" || v === "kanban"))
+          new Set(
+            requested.filter(
+              (v) => v === "grid" || v === "kanban" || v === "gantt"
+            )
+          )
         );
         return {
           sourceToolName: dataPart.data.sourceToolName,

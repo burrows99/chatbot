@@ -1,4 +1,5 @@
 import type { IData } from "@/components/chat/data-grid";
+import type { IGanttFeature } from "@/components/chat/gantt-chart";
 import type { IKanbanCard } from "@/components/chat/kanban-board";
 import { CanvasEntity } from "../canvas-entity";
 import type { GhLabel } from "./gh-label";
@@ -77,6 +78,28 @@ export class GhIssue extends CanvasEntity {
         avatar: assignee.avatar_url,
       })),
       stateReason: this.state_reason || undefined,
+    };
+  }
+
+  get ganttFeature(): IGanttFeature {
+    const open = this.state === "open";
+    const status = open
+      ? { id: "open", name: "Open", color: "#10B981" }
+      : { id: "closed", name: "Closed", color: "#8B5CF6" };
+    const repoSlug = this.repository_url
+      ? this.repository_url.replace(/^.*\/repos\//, "")
+      : undefined;
+    return {
+      id: String(this.id),
+      name: this.title || this.user?.login || "",
+      startAt: this.created_at,
+      endAt: this.closed_at || new Date().toISOString(),
+      status,
+      group: repoSlug,
+      owner: this.user?.login
+        ? { id: this.user.login, name: this.user.login, image: this.user.avatar_url }
+        : undefined,
+      url: this.html_url,
     };
   }
 }

@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { Fragment } from "react";
 import { DataGridComponent } from "@/components/chat/data-grid";
+import { GanttChartComponent } from "@/components/chat/gantt-chart";
 import { KanbanBoardComponent } from "@/components/chat/kanban-board";
 import { CanvasEntity } from "@/lib/er/canvas-entity";
 import { GitHubSearchIssuesToolResult } from "@/lib/er/github/github-search-issues-tool-result";
 
-export type CanvasView = "grid" | "kanban";
+export type CanvasView = "grid" | "kanban" | "gantt";
 
 type ViewRenderer<TEntity> = (entity: TEntity) => ReactNode;
 
@@ -78,6 +79,7 @@ export const genUIRegistry = new GenUIRegistry().register<GitHubSearchIssuesTool
     views: {
       grid: (entity) => <DataGridComponent {...entity.dataGridProps} />,
       kanban: (entity) => <KanbanBoardComponent {...entity.kanbanBoardProps} />,
+      gantt: (entity) => <GanttChartComponent {...entity.ganttChartProps} />,
     },
   }
 );
