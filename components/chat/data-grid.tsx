@@ -2,23 +2,41 @@
 
 import {
   type ColumnDef,
+  type ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   type PaginationState,
+  type RowSelectionState,
   type SortingState,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ExternalLinkIcon,
+  MoreHorizontalIcon,
+  SlidersHorizontalIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -70,9 +88,37 @@ export function DataGridComponent({
     pageSize,
   });
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const columns = useMemo<ColumnDef<IData>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            aria-label="Select all"
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() ? "indeterminate" : false)
+            }
+            onCheckedChange={(value) =>
+              table.toggleAllPageRowsSelected(!!value)
+            }
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            aria-label="Select row"
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        size: 32,
+      },
       {
         accessorKey: "name",
         header: ({ column }) => (
@@ -156,6 +202,59 @@ export function DataGridComponent({
           </div>
         ),
       },
+      {
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+        cell: ({ row }) => {
+          const { url } = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="size-7 p-0"
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <span className="sr-only">Open row actions</span>
+                  <MoreHorizontalIcon className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  disabled={!url}
+                  onClick={() => {
+                    if (url) {
+                      window.open(url, "_blank", "noopener,noreferrer");
+                    }
+                  }}
+                >
+                  <ExternalLinkIcon className="mr-2 size-3.5" />
+                  Open on GitHub
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!url}
+                  onClick={() => {
+                    if (url) {
+                      navigator.clipboard.writeText(url);
+                    }
+                  }}
+                >
+                  Copy URL
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => navigator.clipboard.writeText(row.original.id)}
+                >
+                  Copy ID
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
     ],
     []
   );
@@ -164,23 +263,75 @@ export function DataGridComponent({
     data,
     columns,
     getRowId: (row) => row.id,
-    state: { pagination, sorting },
+    state: {
+      pagination,
+      sorting,
+      columnFilters,
+      columnVisibility,
+      rowSelection,
+    },
     onPaginationChange: setPagination,
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    enableRowSelection: true,
   });
 
-  const rowCount = data.length;
+  const rowCount = table.getFilteredRowModel().rows.length;
   const currentPageSize = pagination.pageSize;
   const currentPageIndex = pagination.pageIndex;
   const pageCount = table.getPageCount();
   const from = rowCount === 0 ? 0 : currentPageIndex * currentPageSize + 1;
   const to = Math.min((currentPageIndex + 1) * currentPageSize, rowCount);
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
+
+  const nameFilter =
+    (table.getColumn("name")?.getFilterValue() as string | undefined) ?? "";
 
   return (
     <div className="w-full space-y-2.5">
+      <div className="flex items-center gap-2">
+        <Input
+          aria-label="Filter by name"
+          className="h-9 max-w-sm"
+          onChange={(event) =>
+            table.getColumn("name")?.setFilterValue(event.target.value)
+          }
+          placeholder="Filter by name..."
+          value={nameFilter}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="ml-auto h-9" size="sm" variant="outline">
+              <SlidersHorizontalIcon className="mr-2 size-3.5" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => (
+                <DropdownMenuCheckboxItem
+                  checked={column.getIsVisible()}
+                  className="capitalize"
+                  key={column.id}
+                  onCheckedChange={(value) =>
+                    column.toggleVisibility(!!value)
+                  }
+                >
+                  {column.id}
+                </DropdownMenuCheckboxItem>
+              ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
@@ -231,26 +382,34 @@ export function DataGridComponent({
       </div>
 
       <div className="flex items-center justify-between gap-4 text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span>Rows per page</span>
-          <Select
-            onValueChange={(value) => table.setPageSize(Number(value))}
-            value={`${currentPageSize}`}
-          >
-            <SelectTrigger className="h-8 w-20" size="sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={`${size}`}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <span>
+            {selectedCount > 0
+              ? `${selectedCount} of ${rowCount} selected`
+              : `${rowCount} rows`}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>Rows per page</span>
+            <Select
+              onValueChange={(value) => table.setPageSize(Number(value))}
+              value={`${currentPageSize}`}
+            >
+              <SelectTrigger className="h-8 w-20" size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <span className="text-muted-foreground">
             {from} – {to} of {rowCount}
           </span>
