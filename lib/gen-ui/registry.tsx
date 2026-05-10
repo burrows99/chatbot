@@ -4,7 +4,7 @@ import { DataGridComponent } from "@/components/chat/data-grid";
 import { GanttChartComponent } from "@/components/chat/gantt-chart";
 import { KanbanBoardComponent } from "@/components/chat/kanban-board";
 import { CanvasEntity } from "@/lib/er/canvas-entity";
-import { GitHubSearchIssuesToolResult } from "@/lib/er/github/github-search-issues-tool-result";
+import { GitHubSearchIssuesToolResult } from "@/lib/er/github/github-search-issues.tool.result";
 
 export type CanvasView = "grid" | "kanban" | "gantt";
 
