@@ -129,9 +129,9 @@ function DataGridTableDndRow<TData>({ row }: { row: Row<TData> }) {
         key={row.id}
         row={row}
       >
-        {row.getVisibleCells().map((cell: Cell<TData, unknown>) => {
+        {row.getVisibleCells().map((cell: Cell<TData, unknown>, colIndex) => {
           return (
-            <DataGridTableBodyRowCell cell={cell} key={cell.id}>
+            <DataGridTableBodyRowCell cell={cell} key={colIndex}>
               {flexRender(cell.column.columnDef.cell, cell.getContext())}
             </DataGridTableBodyRowCell>
           );
@@ -162,9 +162,7 @@ function DataGridTableDndRows<TData>({
   );
 
   useEffect(() => {
-    if (!isDraggingRow) {
-      return;
-    }
+    if (!isDraggingRow) return;
 
     const { body, documentElement } = document;
     const previousBodyCursor = body.style.cursor;
@@ -222,48 +220,47 @@ function DataGridTableDndRows<TData>({
       <DataGridTableViewport
         className={
           isDraggingRow
-            ? "relative cursor-grabbing **:cursor-grabbing!"
+            ? "relative cursor-grabbing [&_*]:cursor-grabbing!"
             : "relative"
         }
         viewportRef={tableContainerRef}
       >
         <DataGridTableBase>
           <DataGridTableHead>
-            {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => {
-              return (
-                <DataGridTableHeadRow
-                  headerGroup={headerGroup}
-                  key={headerGroup.id}
-                >
-                  {headerGroup.headers.map((header) => {
-                    const { column } = header;
+            {table
+              .getHeaderGroups()
+              .map((headerGroup: HeaderGroup<TData>, index) => {
+                return (
+                  <DataGridTableHeadRow headerGroup={headerGroup} key={index}>
+                    {headerGroup.headers.map((header, index) => {
+                      const { column } = header;
 
-                    return (
-                      <DataGridTableHeadRowCell header={header} key={header.id}>
-                        {header.isPlaceholder ? null : props.tableLayout
-                            ?.columnsResizable && column.getCanResize() ? (
-                          <div className="truncate">
-                            {flexRender(
+                      return (
+                        <DataGridTableHeadRowCell header={header} key={index}>
+                          {header.isPlaceholder ? null : props.tableLayout
+                              ?.columnsResizable && column.getCanResize() ? (
+                            <div className="truncate">
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </div>
+                          ) : (
+                            flexRender(
                               header.column.columnDef.header,
                               header.getContext()
-                            )}
-                          </div>
-                        ) : (
-                          flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )
-                        )}
-                        {props.tableLayout?.columnsResizable &&
-                          column.getCanResize() && (
-                            <DataGridTableHeadRowCellResize header={header} />
+                            )
                           )}
-                      </DataGridTableHeadRowCell>
-                    );
-                  })}
-                </DataGridTableHeadRow>
-              );
-            })}
+                          {props.tableLayout?.columnsResizable &&
+                            column.getCanResize() && (
+                              <DataGridTableHeadRowCellResize header={header} />
+                            )}
+                        </DataGridTableHeadRowCell>
+                      );
+                    })}
+                  </DataGridTableHeadRow>
+                );
+              })}
           </DataGridTableHead>
 
           {(props.tableLayout?.stripped || !props.tableLayout?.rowBorder) && (
@@ -275,13 +272,12 @@ function DataGridTableDndRows<TData>({
             isLoading &&
             pagination?.pageSize ? (
               Array.from({ length: pagination.pageSize }).map((_, rowIndex) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows have no identity
                 <DataGridTableBodyRowSkeleton key={rowIndex}>
-                  {table.getVisibleFlatColumns().map((column) => {
+                  {table.getVisibleFlatColumns().map((column, colIndex) => {
                     return (
                       <DataGridTableBodyRowSkeletonCell
                         column={column}
-                        key={column.id}
+                        key={colIndex}
                       >
                         {column.columnDef.meta?.skeleton}
                       </DataGridTableBodyRowSkeletonCell>

@@ -96,12 +96,10 @@ function DataGridTableVirtualSpacer({
   columnCount: number;
   height: number;
 }) {
-  if (height <= 0) {
-    return null;
-  }
+  if (height <= 0) return null;
 
   return (
-    <tr>
+    <tr aria-hidden="true">
       <td colSpan={columnCount} style={{ height, padding: 0 }} />
     </tr>
   );
@@ -132,7 +130,7 @@ function DataGridTableVirtualStatusRow({
 }
 
 function DataGridTableVirtualBody<TData>({
-  table: _table,
+  table,
   columnCount,
   topRows,
   centerRows,
@@ -149,9 +147,7 @@ function DataGridTableVirtualBody<TData>({
 }: VirtualBodyProps<TData>) {
   const totalRows = topRows.length + centerRows.length + bottomRows.length;
 
-  if (!totalRows) {
-    return <DataGridTableEmpty />;
-  }
+  if (!totalRows) return <DataGridTableEmpty />;
 
   const hasCenterRows = centerRows.length > 0;
   const showFetchingRow = isInfiniteMode && isFetchingMore;
@@ -163,26 +159,25 @@ function DataGridTableVirtualBody<TData>({
       : 0;
   const trailingSpacerHeight =
     isVirtualizationEnabled && hasCenterRows && virtualItems.length > 0
-      ? Math.max(0, totalSize - (virtualItems.at(-1)?.end ?? 0))
+      ? Math.max(
+          0,
+          totalSize - (virtualItems[virtualItems.length - 1]?.end ?? 0)
+        )
       : 0;
 
   const renderedRows: ReactNode[] = [];
 
-  for (let i = 0; i < topRows.length; i++) {
-    const row = topRows[i];
-    if (!row) {
-      continue;
-    }
+  topRows.forEach((row, index) => {
     renderedRows.push(
       <DataGridTableRenderedRow
         key={row.id}
         pinnedBoundary={
-          i === topRows.length - 1 && hasMiddleSection ? "top" : undefined
+          index === topRows.length - 1 && hasMiddleSection ? "top" : undefined
         }
         row={row}
       />
     );
-  }
+  });
 
   if (isVirtualizationEnabled) {
     if (leadingSpacerHeight > 0) {
@@ -195,12 +190,10 @@ function DataGridTableVirtualBody<TData>({
       );
     }
 
-    for (const virtualRow of virtualItems) {
+    virtualItems.forEach((virtualRow) => {
       const row = centerRows[virtualRow.index];
 
-      if (!row) {
-        continue;
-      }
+      if (!row) return;
 
       renderedRows.push(
         <DataGridTableRenderedRow
@@ -209,7 +202,7 @@ function DataGridTableVirtualBody<TData>({
           rowRef={measureRowRef}
         />
       );
-    }
+    });
 
     if (trailingSpacerHeight > 0) {
       renderedRows.push(
@@ -221,9 +214,9 @@ function DataGridTableVirtualBody<TData>({
       );
     }
   } else {
-    for (const row of centerRows) {
+    centerRows.forEach((row) => {
       renderedRows.push(<DataGridTableRenderedRow key={row.id} row={row} />);
-    }
+    });
   }
 
   if (showFetchingRow) {
@@ -252,23 +245,19 @@ function DataGridTableVirtualBody<TData>({
     );
   }
 
-  for (let i = 0; i < bottomRows.length; i++) {
-    const row = bottomRows[i];
-    if (!row) {
-      continue;
-    }
+  bottomRows.forEach((row, index) => {
     renderedRows.push(
       <DataGridTableRenderedRow
         key={row.id}
         pinnedBoundary={
-          i === 0 && (topRows.length > 0 || hasMiddleSection)
+          index === 0 && (topRows.length > 0 || hasMiddleSection)
             ? "bottom"
             : undefined
         }
         row={row}
       />
     );
-  }
+  });
 
   return <>{renderedRows}</>;
 }
@@ -351,9 +340,7 @@ function DataGridTableVirtual<TData>({
     (index: number) => {
       const row = centerRows[index];
 
-      if (!row) {
-        return index;
-      }
+      if (!row) return index;
 
       return customGetItemKey?.(index, row) ?? row.id ?? index;
     },
@@ -404,10 +391,8 @@ function DataGridTableVirtual<TData>({
       return;
     }
 
-    const lastItem = virtualItems.at(-1);
-    if (!lastItem) {
-      return;
-    }
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (!lastItem) return;
 
     if (lastItem.index >= centerRows.length - 1 - resolvedFetchMoreOffset) {
       onFetchMore?.();
@@ -436,39 +421,38 @@ function DataGridTableVirtual<TData>({
       <DataGridTableBase>
         {renderHeader && (
           <DataGridTableHead>
-            {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => (
-              <DataGridTableHeadRow
-                headerGroup={headerGroup}
-                key={headerGroup.id}
-              >
-                {headerGroup.headers.map((header) => {
-                  const { column } = header;
+            {table
+              .getHeaderGroups()
+              .map((headerGroup: HeaderGroup<TData>, index) => (
+                <DataGridTableHeadRow headerGroup={headerGroup} key={index}>
+                  {headerGroup.headers.map((header, hIndex) => {
+                    const { column } = header;
 
-                  return (
-                    <DataGridTableHeadRowCell header={header} key={header.id}>
-                      {header.isPlaceholder ? null : props.tableLayout
-                          ?.columnsResizable && column.getCanResize() ? (
-                        <div className="truncate">
-                          {flexRender(
+                    return (
+                      <DataGridTableHeadRowCell header={header} key={hIndex}>
+                        {header.isPlaceholder ? null : props.tableLayout
+                            ?.columnsResizable && column.getCanResize() ? (
+                          <div className="truncate">
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                          </div>
+                        ) : (
+                          flexRender(
                             header.column.columnDef.header,
                             header.getContext()
-                          )}
-                        </div>
-                      ) : (
-                        flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )
-                      )}
-                      {props.tableLayout?.columnsResizable &&
-                        column.getCanResize() && (
-                          <DataGridTableHeadRowCellResize header={header} />
+                          )
                         )}
-                    </DataGridTableHeadRowCell>
-                  );
-                })}
-              </DataGridTableHeadRow>
-            ))}
+                        {props.tableLayout?.columnsResizable &&
+                          column.getCanResize() && (
+                            <DataGridTableHeadRowCellResize header={header} />
+                          )}
+                      </DataGridTableHeadRowCell>
+                    );
+                  })}
+                </DataGridTableHeadRow>
+              ))}
           </DataGridTableHead>
         )}
 
@@ -504,9 +488,9 @@ function DataGridTableVirtual<TData>({
   );
 }
 
+export { DataGridTableVirtual };
 export type {
-  DataGridTableVirtualizerOptions,
   DataGridTableVirtualProps,
   DataGridTableVirtualScrollElements,
+  DataGridTableVirtualizerOptions,
 };
-export { DataGridTableVirtual };

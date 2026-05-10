@@ -57,9 +57,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
   const resolvedTitle = title ?? getColumnHeaderLabel(column);
 
   const columnOrder = table.getState().columnOrder;
-  const _columnVisibilityKey = JSON.stringify(
-    table.getState().columnVisibility
-  );
+  const columnVisibilityKey = JSON.stringify(table.getState().columnVisibility);
   const isSorted = column.getIsSorted();
   const isPinned = column.getIsPinned();
   const canSort = column.getCanSort();
@@ -283,6 +281,7 @@ function DataGridColumnHeaderInner<TData, TValue>({
     table,
     columnIndex,
     columnOrder,
+    columnVisibilityKey, // Needed to update checkbox states when visibility changes
   ]);
 
   if (hasControls) {

@@ -209,9 +209,7 @@ function DataGridScrollArea({
     const container = containerRef.current;
     const viewport = viewportRef.current;
 
-    if (!container || !viewport) {
-      return;
-    }
+    if (!container || !viewport) return;
 
     if (!usesCustomVerticalScrollbar) {
       resetMetrics();
@@ -273,9 +271,7 @@ function DataGridScrollArea({
     const viewport = viewportRef.current;
     const { thumbHeight, trackHeight } = metricsRef.current;
 
-    if (!viewport) {
-      return;
-    }
+    if (!viewport) return;
 
     const maxScroll = Math.max(
       0,
@@ -295,9 +291,7 @@ function DataGridScrollArea({
   const handleThumbPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     const viewport = viewportRef.current;
 
-    if (!viewport) {
-      return;
-    }
+    if (!viewport) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -328,9 +322,7 @@ function DataGridScrollArea({
       viewport.scrollHeight - viewport.clientHeight
     );
 
-    if (maxThumbTop === 0 || maxScroll === 0) {
-      return;
-    }
+    if (maxThumbTop === 0 || maxScroll === 0) return;
 
     const deltaY = event.clientY - dragState.startY;
     const nextScrollTop =
@@ -340,18 +332,14 @@ function DataGridScrollArea({
   };
 
   const handleThumbPointerUp = (event: PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current?.pointerId !== event.pointerId) {
-      return;
-    }
+    if (dragRef.current?.pointerId !== event.pointerId) return;
     clearDragState();
   };
 
   const handleTrackPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     const { thumbHeight } = metricsRef.current;
 
-    if (event.target !== event.currentTarget) {
-      return;
-    }
+    if (event.target !== event.currentTarget) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -437,5 +425,5 @@ function DataGridScrollArea({
   );
 }
 
-export type { DataGridScrollAreaOrientation, DataGridScrollAreaProps };
 export { DataGridScrollArea };
+export type { DataGridScrollAreaOrientation, DataGridScrollAreaProps };

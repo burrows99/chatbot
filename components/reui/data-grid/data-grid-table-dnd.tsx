@@ -40,7 +40,7 @@ import {
   DataGridTableBody,
   DataGridTableBodyRow,
   DataGridTableBodyRowCell,
-  DataGridTableBodyRowExpanded,
+  DataGridTableBodyRowExpandded,
   DataGridTableBodyRowSkeleton,
   DataGridTableBodyRowSkeletonCell,
   DataGridTableEmpty,
@@ -170,9 +170,7 @@ function DataGridTableDnd<TData>({
   );
 
   useEffect(() => {
-    if (!isDraggingColumn) {
-      return;
-    }
+    if (!isDraggingColumn) return;
 
     const { body, documentElement } = document;
     const previousBodyCursor = body.style.cursor;
@@ -226,30 +224,32 @@ function DataGridTableDnd<TData>({
       <DataGridTableViewport
         className={
           isDraggingColumn
-            ? "relative cursor-grabbing **:cursor-grabbing!"
+            ? "relative cursor-grabbing [&_*]:cursor-grabbing!"
             : "relative"
         }
         viewportRef={containerRef}
       >
         <DataGridTableBase>
           <DataGridTableHead>
-            {table.getHeaderGroups().map((headerGroup: HeaderGroup<TData>) => {
-              return (
-                <DataGridTableHeadRow
-                  headerGroup={headerGroup}
-                  key={headerGroup.id}
-                >
-                  <SortableContext
-                    items={table.getState().columnOrder}
-                    strategy={horizontalListSortingStrategy}
-                  >
-                    {headerGroup.headers.map((header) => (
-                      <DataGridTableDndHeader header={header} key={header.id} />
-                    ))}
-                  </SortableContext>
-                </DataGridTableHeadRow>
-              );
-            })}
+            {table
+              .getHeaderGroups()
+              .map((headerGroup: HeaderGroup<TData>, index) => {
+                return (
+                  <DataGridTableHeadRow headerGroup={headerGroup} key={index}>
+                    <SortableContext
+                      items={table.getState().columnOrder}
+                      strategy={horizontalListSortingStrategy}
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <DataGridTableDndHeader
+                          header={header}
+                          key={header.id}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DataGridTableHeadRow>
+                );
+              })}
           </DataGridTableHead>
 
           {(props.tableLayout?.stripped || !props.tableLayout?.rowBorder) && (
@@ -261,13 +261,12 @@ function DataGridTableDnd<TData>({
             isLoading &&
             pagination?.pageSize ? (
               Array.from({ length: pagination.pageSize }).map((_, rowIndex) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows have no identity
                 <DataGridTableBodyRowSkeleton key={rowIndex}>
-                  {table.getVisibleFlatColumns().map((column) => {
+                  {table.getVisibleFlatColumns().map((column, colIndex) => {
                     return (
                       <DataGridTableBodyRowSkeletonCell
                         column={column}
-                        key={column.id}
+                        key={colIndex}
                       >
                         {column.columnDef.meta?.skeleton}
                       </DataGridTableBodyRowSkeletonCell>
@@ -295,7 +294,7 @@ function DataGridTableDnd<TData>({
                         })}
                     </DataGridTableBodyRow>
                     {row.getIsExpanded() && (
-                      <DataGridTableBodyRowExpanded row={row} />
+                      <DataGridTableBodyRowExpandded row={row} />
                     )}
                   </Fragment>
                 );

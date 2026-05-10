@@ -34,9 +34,7 @@ function DataGridColumnFilter<TData, TValue>({
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredOptions = useMemo(() => {
-    if (!searchQuery) {
-      return options;
-    }
+    if (!searchQuery) return options;
     return options.filter((option) =>
       option.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -102,9 +100,9 @@ function DataGridColumnFilter<TData, TValue>({
               {filteredOptions.map((option) => {
                 const isSelected = selectedValues.has(option.value);
                 return (
-                  <button
+                  <div
                     className={cn(
-                      "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none",
+                      "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none",
                       "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                     )}
                     key={option.value}
@@ -119,7 +117,6 @@ function DataGridColumnFilter<TData, TValue>({
                         filterValues.length ? filterValues : undefined
                       );
                     }}
-                    type="button"
                   >
                     <div
                       className={cn(
@@ -140,7 +137,7 @@ function DataGridColumnFilter<TData, TValue>({
                         {facets.get(option.value)}
                       </span>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -149,13 +146,12 @@ function DataGridColumnFilter<TData, TValue>({
             <>
               <div className="bg-border -mx-1 my-1 h-px" />
               <div className="p-1">
-                <button
-                  className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground relative flex w-full cursor-default items-center justify-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none"
+                <div
+                  className="hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center justify-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none"
                   onClick={() => column?.setFilterValue(undefined)}
-                  type="button"
                 >
                   Clear filters
-                </button>
+                </div>
               </div>
             </>
           )}

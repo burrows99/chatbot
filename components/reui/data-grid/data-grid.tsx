@@ -12,7 +12,7 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
-  // biome-ignore lint/correctness/noUnusedVariables: type parameter name must match base declaration for merging
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     headerTitle?: string;
     headerClassName?: string;
@@ -27,13 +27,9 @@ export function getColumnHeaderLabel<TData, TValue>(
   column: Column<TData, TValue>
 ): string {
   const meta = column.columnDef.meta as { headerTitle?: string } | undefined;
-  if (typeof meta?.headerTitle === "string") {
-    return meta.headerTitle;
-  }
+  if (typeof meta?.headerTitle === "string") return meta.headerTitle;
   const defHeader = column.columnDef.header;
-  if (typeof defHeader === "string") {
-    return defHeader;
-  }
+  if (typeof defHeader === "string") return defHeader;
   return String(column.id);
 }
 
@@ -129,7 +125,7 @@ function DataGridProvider<TData extends object>({
   table,
   ...props
 }: DataGridProps<TData> & { table: Table<TData> }) {
-  const _tableState = table.getState();
+  const tableState = table.getState();
   const resolvedColumnsResizeMode =
     props.tableLayout?.columnsResizeMode ?? "onEnd";
 
@@ -161,8 +157,19 @@ function DataGridProvider<TData extends object>({
       props.emptyMessage,
       props.onRowClick,
       props.className,
-      // biome-ignore lint/correctness/useExhaustiveDependencies: props object is a catch-all for unlisted props
-      props,
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      JSON.stringify(props.tableLayout),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      JSON.stringify(props.tableClassNames),
+      tableState.sorting,
+      tableState.pagination,
+      tableState.columnFilters,
+      tableState.rowSelection,
+      tableState.expanded,
+      tableState.columnVisibility,
+      tableState.columnOrder,
+      tableState.columnPinning,
+      tableState.globalFilter,
     ]
   );
 
@@ -259,4 +266,4 @@ function DataGridContainer({
   );
 }
 
-export { DataGrid, DataGridContainer, DataGridProvider, useDataGrid };
+export { useDataGrid, DataGridProvider, DataGrid, DataGridContainer };
