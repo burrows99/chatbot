@@ -1,3 +1,7 @@
+import type {
+  DataGridComponentProps,
+  IData,
+} from "@/components/chat/data-grid";
 import { CanvasEntity } from "./canvas-entity";
 
 export class GhUser extends CanvasEntity {
@@ -56,10 +60,41 @@ export class GhIssue extends CanvasEntity {
   repository_url = "";
   reactions: GhReactions = new GhReactions();
   node_id = "";
+
+  toIData(): IData {
+    return {
+      id: String(this.id),
+      name: this.title || this.user.login,
+      availability: this.state === "open" ? "online" : "offline",
+      avatar: this.user.avatar_url,
+      status: this.state === "open" ? "active" : "inactive",
+      flag: "us",
+      email: "",
+      company: this.user.type,
+      role: this.author_association,
+      joined: this.created_at,
+      location: this.user.login,
+      balance: this.comments,
+    };
+  }
 }
 
 export class GhIssueSearchResult extends CanvasEntity {
   total_count = 0;
   incomplete_results = false;
   items: GhIssue[] = [];
+
+  toIDataList(): IData[] {
+    return this.items.map((item) =>
+      item instanceof GhIssue
+        ? item.toIData()
+        : (GhIssue.fromRaw(item) as GhIssue).toIData()
+    );
+  }
+
+  toDataGridProps(): DataGridComponentProps {
+    return {
+      data: this.toIDataList(),
+    };
+  }
 }
