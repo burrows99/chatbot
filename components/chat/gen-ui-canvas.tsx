@@ -3,33 +3,10 @@
 import type { DynamicToolUIPart } from "ai";
 import { PanelRightIcon, XIcon } from "lucide-react";
 import { useMemo } from "react";
-import { CanvasEntity } from "@/lib/er/canvas-entity";
-import { GitHubSearchIssuesToolResult } from "@/lib/er/github/github-search-issues-tool-result";
+import { type CanvasView, genUIRegistry } from "@/lib/gen-ui/registry";
 import type { ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
-import { DataGridComponent } from "./data-grid";
-import { KanbanBoardComponent } from "./kanban-board";
-
-type CanvasView = "grid" | "kanban";
-
-function unwrapMcpOutput(output: unknown): unknown {
-  if (!output || typeof output !== "object") {
-    return output;
-  }
-  const envelope = output as {
-    content?: Array<{ type?: string; text?: string }>;
-  };
-  const first = Array.isArray(envelope.content) ? envelope.content[0] : null;
-  if (first?.type === "text" && typeof first.text === "string") {
-    try {
-      return JSON.parse(first.text);
-    } catch {
-      return output;
-    }
-  }
-  return output;
-}
 
 type CanvasRenderDataPart = {
   type: "data-canvas-render";
@@ -92,32 +69,6 @@ function findSourceOutput(
   return null;
 }
 
-function renderSource(
-  toolName: string,
-  output: unknown,
-  views: CanvasView[]
-) {
-  if (!toolName.endsWith("search_issues")) {
-    return null;
-  }
-  const result = CanvasEntity.fromRaw(
-    GitHubSearchIssuesToolResult,
-    unwrapMcpOutput(output)
-  );
-  return (
-    <div className="flex w-full flex-col gap-6">
-      {views.map((view) => {
-        if (view === "kanban") {
-          return (
-            <KanbanBoardComponent key={view} {...result.kanbanBoardProps} />
-          );
-        }
-        return <DataGridComponent key={view} {...result.dataGridProps} />;
-      })}
-    </div>
-  );
-}
-
 export function GenUICanvas({
   messages,
   onClose,
@@ -134,7 +85,11 @@ export function GenUICanvas({
     if (output == null) {
       return null;
     }
-    return renderSource(request.sourceToolName, output, request.views);
+    return genUIRegistry.render(
+      request.sourceToolName,
+      output,
+      request.views
+    );
   }, [messages]);
 
   return (
